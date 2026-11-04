@@ -29,7 +29,7 @@ const (
 )
 
 type droverOptions struct {
-	CoreDir            string
+	CoreFile           string
 	ConfigFile         string
 	SystemProxyAuto    bool
 	TunStartMode       tunStartMode
@@ -40,8 +40,8 @@ type droverOptions struct {
 func loadOptions(filename string) droverOptions {
 	currentDir := filepath.Dir(filename) + string(os.PathSeparator)
 	opts := droverOptions{
-		CoreDir:            currentDir,
-		ConfigFile:         "config.yaml",
+		CoreFile:           filepath.Join(currentDir, "mihomo.exe"),
+		ConfigFile:         filepath.Join(currentDir, "config.yaml"),
 		SystemProxyAuto:    false,
 		TunStartMode:       tsmOff,
 		SelectorMenuLayout: smlAuto,
@@ -52,26 +52,12 @@ func loadOptions(filename string) droverOptions {
 		return opts
 	}
 
-	if value, found := iniGet(lines, optionsSection, "mihomo-dir"); found {
-		value = strings.TrimSpace(value)
-		if value == "" {
-			opts.CoreDir = currentDir
-		} else {
-			opts.CoreDir = includeTrailingPathDelimiter(value)
-		}
+	if value, found := iniGet(lines, optionsSection, "mihomo-core"); found {
+		opts.CoreFile = resolveOptionPath(currentDir, value, "mihomo.exe")
 	}
 
 	if value, found := iniGet(lines, optionsSection, "config-file"); found {
-		if !strings.Contains(value, ":") {
-			base := value
-			for _, candidate := range []string{currentDir + base, opts.CoreDir + base} {
-				if fileExists(candidate) {
-					value = candidate
-					break
-				}
-			}
-		}
-		opts.ConfigFile = value
+		opts.ConfigFile = resolveOptionPath(currentDir, value, "config.yaml")
 	}
 
 	if value, found := iniGet(lines, optionsSection, "tun-start-mode"); found {
@@ -93,13 +79,24 @@ func loadOptions(filename string) droverOptions {
 	return opts
 }
 
-func saveOptions(filename, coreDir, configFile string, layout selectorMenuLayout) error {
+func resolveOptionPath(baseDir, value, fallback string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		value = fallback
+	}
+	if filepath.IsAbs(value) {
+		return filepath.Clean(value)
+	}
+	return filepath.Join(baseDir, value)
+}
+
+func saveOptions(filename, coreFile, configFile string, layout selectorMenuLayout) error {
 	lines, hadBOM, _ := readTextLines(filename)
 	if lines == nil {
 		lines = []string{}
 	}
 
-	lines = iniSet(lines, optionsSection, "mihomo-dir", coreDir)
+	lines = iniSet(lines, optionsSection, "mihomo-core", coreFile)
 	lines = iniSet(lines, optionsSection, "config-file", configFile)
 	lines = iniSet(lines, optionsSection, "selector-menu-layout", layoutToValue(layout))
 
@@ -169,11 +166,6 @@ func includeTrailingPathDelimiter(path string) string {
 func fileExists(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir()
-}
-
-func dirExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
 }
 
 // --- INI helpers ---------------------------------------------------------

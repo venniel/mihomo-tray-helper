@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -44,7 +43,7 @@ type settingsDialog struct {
 	hCancelButton uintptr
 
 	optionsFile       string
-	initialCoreDir    string
+	initialCoreFile   string
 	initialConfigFile string
 	selectedLayout    selectorMenuLayout
 	restartRequired   bool
@@ -56,13 +55,6 @@ type settingsDialog struct {
 }
 
 var settingsWindowProc = windows.NewCallback(settingsWndProcFunc)
-
-var browseFolderCallback = windows.NewCallback(func(hwnd, msg, lparam, lpData uintptr) uintptr {
-	if msg == bffmInitialized && lpData != 0 {
-		pSendMessageW.Call(hwnd, bffmSetSelection, 1, lpData)
-	}
-	return 0
-})
 
 var (
 	settingsClassOnce sync.Once
@@ -119,17 +111,8 @@ func newSettingsDialog(owner uintptr, firstRun bool, errorMessage string) (*sett
 		selectedLayout: opts.SelectorMenuLayout,
 	}
 
-	coreDir, err := normalizeDir(opts.CoreDir)
-	if err != nil {
-		coreDir = opts.CoreDir
-	}
-	s.initialCoreDir = coreDir
-
-	configFile, err := filepath.Abs(opts.ConfigFile)
-	if err != nil {
-		configFile = opts.ConfigFile
-	}
-	s.initialConfigFile = configFile
+	s.initialCoreFile = filepath.Clean(opts.CoreFile)
+	s.initialConfigFile = filepath.Clean(opts.ConfigFile)
 
 	caption := "mihomo-go 设置"
 	if firstRun {
@@ -161,7 +144,7 @@ func newSettingsDialog(owner uintptr, firstRun bool, errorMessage string) (*sett
 	registerSettingsWindow(hwnd, s)
 
 	s.createControls()
-	setWindowText(s.hCoreEdit, coreDir)
+	setWindowText(s.hCoreEdit, opts.CoreFile)
 	setWindowText(s.hConfigEdit, opts.ConfigFile)
 
 	s.hLayoutCombo = getDlgItem(hwnd, idSettingsLayout)
@@ -188,7 +171,7 @@ func newSettingsDialog(owner uintptr, firstRun bool, errorMessage string) (*sett
 // Child windows are z-ordered in creation order, and dialog tab navigation
 // follows that order, so controls must be created in visual reading order.
 func (s *settingsDialog) createControls() {
-	s.hCoreLabel = s.createControl("STATIC", "mihomo 核心目录", ssLeft, 0, 0)
+	s.hCoreLabel = s.createControl("STATIC", "代理核心文件", ssLeft, 0, 0)
 	s.hCoreEdit = s.createControl("EDIT", "", wsBorder|esAutoHScroll|wsTabStop, 0, idSettingsCoreEdit)
 	s.hBrowseCore = s.createControl("BUTTON", "浏览...", bsPushButton|wsTabStop, 0, idSettingsBrowseCore)
 
@@ -205,10 +188,10 @@ func (s *settingsDialog) createControls() {
 	s.hSave = s.createControl("BUTTON", "保存", bsDefPushButton|wsTabStop, 0, idSettingsSave)
 	s.hCancelButton = s.createControl("BUTTON", "取消", bsPushButton|wsTabStop, 0, idSettingsCancel)
 
-	setAccessibleName(s.hCoreEdit, "mihomo 核心目录")
+	setAccessibleName(s.hCoreEdit, "代理核心文件")
 	setAccessibleName(s.hConfigEdit, "配置文件")
 	setAccessibleName(s.hLayoutCombo, "节点菜单样式")
-	setAccessibleName(s.hBrowseCore, "浏览 mihomo 核心目录")
+	setAccessibleName(s.hBrowseCore, "浏览代理核心文件")
 	setAccessibleName(s.hBrowseConfig, "浏览配置文件")
 
 	s.layoutControls()
@@ -428,42 +411,38 @@ func (s *settingsDialog) showError(message string) {
 }
 
 func (s *settingsDialog) browseCore() {
-	dir := cleanPath(getWindowText(s.hCoreEdit))
-	if !dirExists(dir) {
-		dir = ""
+	current := cleanPath(getWindowText(s.hCoreEdit))
+	initial := ""
+	var initialDir *uint16
+	if fileExists(current) {
+		initial = current
+		initialDir = utf16Ptr(filepath.Dir(current))
 	}
 
-	var selection []uint16
-	var selectionPtr uintptr
-	if dir != "" {
-		if u, err := windows.UTF16FromString(dir); err == nil {
-			selection = u
-			selectionPtr = uintptr(unsafe.Pointer(&selection[0]))
-		}
+	buffer := make([]uint16, 32768)
+	copyToUTF16Array(buffer, initial)
+
+	filter := utf16FilterString("核心程序 (*.exe)\x00*.exe\x00所有文件 (*.*)\x00*.*\x00")
+
+	ofn := openFileName{
+		LStructSize:     uint32(unsafe.Sizeof(openFileName{})),
+		HwndOwner:       s.hwnd,
+		LpstrFilter:     &filter[0],
+		LpstrFile:       &buffer[0],
+		NMaxFile:        uint32(len(buffer)),
+		LpstrInitialDir: initialDir,
+		LpstrTitle:      utf16Ptr("选择代理核心文件"),
+		NFilterIndex:    1,
+		Flags:           ofnFileMustExist | ofnPathMustExist | ofnExplorer | ofnNoChangeDir,
 	}
 
-	display := make([]uint16, 260)
-	bi := browseInfo{
-		HwndOwner:      s.hwnd,
-		PszDisplayName: &display[0],
-		LpszTitle:      utf16Ptr("选择 mihomo 核心目录"),
-		UlFlags:        bifReturnOnlyFSDirs | bifNewDialogStyle | bifEditBox,
-		Lpfn:           browseFolderCallback,
-		LParam:         selectionPtr,
+	r, _, _ := pGetOpenFileNameW.Call(uintptr(unsafe.Pointer(&ofn)))
+	if r != 0 {
+		setWindowText(s.hCoreEdit, windows.UTF16ToString(buffer))
 	}
-
-	pidl, _, _ := pSHBrowseForFolder.Call(uintptr(unsafe.Pointer(&bi)))
-	if pidl != 0 {
-		path := make([]uint16, 260)
-		ok, _, _ := pSHGetPathFromIDList.Call(pidl, uintptr(unsafe.Pointer(&path[0])))
-		if ok != 0 {
-			setWindowText(s.hCoreEdit, windows.UTF16ToString(path))
-		}
-		pCoTaskMemFree.Call(pidl)
-	}
-	runtime.KeepAlive(&bi)
-	runtime.KeepAlive(display)
-	runtime.KeepAlive(selection)
+	runtime.KeepAlive(&ofn)
+	runtime.KeepAlive(buffer)
+	runtime.KeepAlive(filter)
 }
 
 func (s *settingsDialog) browseConfig() {
@@ -473,8 +452,8 @@ func (s *settingsDialog) browseConfig() {
 	if fileExists(current) {
 		initial = current
 		initialDir = utf16Ptr(filepath.Dir(current))
-	} else if coreDir := cleanPath(getWindowText(s.hCoreEdit)); dirExists(coreDir) {
-		initialDir = utf16Ptr(coreDir)
+	} else if coreFile := cleanPath(getWindowText(s.hCoreEdit)); fileExists(coreFile) {
+		initialDir = utf16Ptr(filepath.Dir(coreFile))
 	}
 
 	buffer := make([]uint16, 32768)
@@ -489,6 +468,7 @@ func (s *settingsDialog) browseConfig() {
 		LpstrFile:       &buffer[0],
 		NMaxFile:        uint32(len(buffer)),
 		LpstrInitialDir: initialDir,
+		LpstrTitle:      utf16Ptr("选择配置文件"),
 		NFilterIndex:    1,
 		Flags:           ofnFileMustExist | ofnPathMustExist | ofnExplorer | ofnNoChangeDir,
 	}
@@ -503,43 +483,24 @@ func (s *settingsDialog) browseConfig() {
 }
 
 func (s *settingsDialog) save() {
-	coreDir, err := normalizeDir(getWindowText(s.hCoreEdit))
-	if err != nil {
-		s.showError("核心目录路径无效。")
+	coreFile := absolutePath(getWindowText(s.hCoreEdit))
+	if coreFile == "" {
+		s.showError("请选择代理核心文件。")
+		setFocus(s.hCoreEdit)
+		return
+	}
+	if !fileExists(coreFile) {
+		s.showError("找不到代理核心文件 " + coreFile + "。")
 		setFocus(s.hCoreEdit)
 		return
 	}
 
-	if coreDir == "" {
-		s.showError("请填写 mihomo 核心目录。")
-		setFocus(s.hCoreEdit)
-		return
-	}
-
-	if !fileExists(includeTrailingPathDelimiter(coreDir) + "mihomo.exe") {
-		s.showError("在 " + coreDir + " 中未找到 mihomo.exe。")
-		setFocus(s.hCoreEdit)
-		return
-	}
-
-	configFile := cleanPath(getWindowText(s.hConfigEdit))
+	configFile := absolutePath(getWindowText(s.hConfigEdit))
 	if configFile == "" {
-		s.showError("请填写配置文件路径。")
+		s.showError("请选择配置文件。")
 		setFocus(s.hConfigEdit)
 		return
 	}
-
-	if !isRootedPath(configFile) {
-		configFile = filepath.Join(coreDir, configFile)
-	}
-	fullConfig, err := filepath.Abs(configFile)
-	if err != nil {
-		s.showError("配置文件路径无效。")
-		setFocus(s.hConfigEdit)
-		return
-	}
-	configFile = filepath.Clean(fullConfig)
-
 	if !fileExists(configFile) {
 		s.showError("找不到配置文件 " + configFile + "。")
 		setFocus(s.hConfigEdit)
@@ -554,13 +515,13 @@ func (s *settingsDialog) save() {
 		layout = smlNested
 	}
 
-	if err := saveOptions(s.optionsFile, coreDir, configFile, layout); err != nil {
+	if err := saveOptions(s.optionsFile, coreFile, configFile, layout); err != nil {
 		s.showError("保存设置失败：" + err.Error())
 		return
 	}
 
 	s.selectedLayout = layout
-	s.restartRequired = !strings.EqualFold(coreDir, s.initialCoreDir) ||
+	s.restartRequired = !strings.EqualFold(coreFile, s.initialCoreFile) ||
 		!strings.EqualFold(configFile, s.initialConfigFile)
 	s.finish(idOK)
 }
@@ -573,25 +534,19 @@ func cleanPath(value string) string {
 	return path
 }
 
-func normalizeDir(value string) (string, error) {
+func absolutePath(value string) string {
 	path := cleanPath(value)
 	if path == "" {
-		return "", nil
+		return ""
 	}
-
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(programDir(), path)
+	}
 	full, err := filepath.Abs(path)
 	if err != nil {
-		return "", err
+		return ""
 	}
-	full = filepath.Clean(full)
-	if len(full) > 3 && os.IsPathSeparator(full[len(full)-1]) {
-		full = full[:len(full)-1]
-	}
-	return full, nil
-}
-
-func isRootedPath(path string) bool {
-	return filepath.IsAbs(path) || strings.HasPrefix(path, `\`) || strings.HasPrefix(path, "/")
+	return filepath.Clean(full)
 }
 
 func showSettingsModal(firstRun bool, errorMessage string) int {

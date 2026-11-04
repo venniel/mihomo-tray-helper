@@ -71,7 +71,8 @@ func newDrover(flags appFlags) (*drover, error) {
 		return nil, err
 	}
 
-	text, err := readConfigText(resolveAgainstProgramDir(d.options.ConfigFile, d.currentProcessDir))
+	configPath := d.options.ConfigFile
+	text, err := readConfigText(configPath)
 	if err != nil {
 		return fail(err)
 	}
@@ -82,7 +83,7 @@ func newDrover(flags appFlags) (*drover, error) {
 	if err := checkMihomoConfig(cfg); err != nil {
 		return fail(err)
 	}
-	d.configPath = resolveAgainstProgramDir(d.options.ConfigFile, d.currentProcessDir)
+	d.configPath = configPath
 	d.mihomoConfig = cfg
 	d.selectors = append([]configSelector(nil), cfg.Selectors...)
 	d.clashModes = append([]string(nil), cfg.Modes...)
@@ -102,7 +103,7 @@ func newDrover(flags appFlags) (*drover, error) {
 
 	d.isElevated = isProcessElevated()
 
-	corePath := includeTrailingPathDelimiter(resolveAgainstProgramDir(d.options.CoreDir, d.currentProcessDir)) + "mihomo.exe"
+	corePath := d.options.CoreFile
 	if !fileExists(corePath) {
 		return fail(errors.New("mihomo executable not found."))
 	}
@@ -112,13 +113,6 @@ func newDrover(flags appFlags) (*drover, error) {
 	d.startCore(d.canUseTun() && d.wantsTun)
 
 	return d, nil
-}
-
-func resolveAgainstProgramDir(path, programDir string) string {
-	if path == "" || filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(programDir, path)
 }
 
 func (d *drover) setDispatch(dispatch func(func())) {

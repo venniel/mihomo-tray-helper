@@ -35,8 +35,9 @@ becoming another all-in-one GUI client.
 ## Requirements
 
 - Windows 10 or later (64-bit)
-- The official `mihomo` for Windows (`mihomo.exe`), downloaded from the upstream project:
-  <https://github.com/MetaCubeX/mihomo/releases>
+- The official `mihomo` for Windows, downloaded from the upstream project:
+  <https://github.com/MetaCubeX/mihomo/releases>. The file may keep its download name such as
+  `mihomo-windows-amd64-v1.19.33.exe`; select it directly in the settings dialog.
 - For TUN mode, a working `wintun.dll` and administrator rights are required
 - A mihomo YAML config that satisfies the requirements below
 
@@ -48,10 +49,11 @@ becoming another all-in-one GUI client.
    go build -ldflags "-H=windowsgui" -trimpath -o mihomo-go.exe .
    ```
 
-2. Put `mihomo-go.exe` next to `mihomo.exe` and your config, or point `mihomo-dir` at the core folder.
-3. Run `mihomo-go.exe`. The included `mihomo-go.ini` already points at `mihomo.exe` and `config.yaml` next to the
+2. Put `mihomo-go.exe` in any folder.
+3. Run `mihomo-go.exe`. The included `mihomo-go.ini` points at `mihomo.exe` and `config.yaml` next to the
    program, so the tray icon appears and the core starts immediately. Left-click the tray icon to open the settings
-   dialog; delete `mihomo-go.ini` if you want the dialog on first launch instead.
+   dialog, where the core executable and the config file are selected as individual files. Delete `mihomo-go.ini`
+   if you want the dialog on first launch instead.
 
 The tray menu and the settings dialog are in Chinese.
 
@@ -123,7 +125,7 @@ Settings are stored in `mihomo-go.ini` next to the executable:
 
 ```ini
 [mihomo-go]
-mihomo-dir =
+mihomo-core = mihomo.exe
 config-file = config.yaml
 tun-start-mode = off
 system-proxy-auto = 0
@@ -135,15 +137,16 @@ selector-menu-layout = auto
 
 | Key | Description |
 | --- | --- |
-| `mihomo-dir` | Folder containing `mihomo.exe`. Empty means the folder with `mihomo-go.exe`. |
-| `config-file` | mihomo YAML config file. A relative name is resolved against the program folder first, then `mihomo-dir`. |
+| `mihomo-core` | Full path to the core executable. It does not need to be named `mihomo.exe`; any filename works. |
+| `config-file` | Full path to the mihomo YAML config file (`.yaml` or `.yml`). |
 | `tun-start-mode` | TUN state used only on the very first launch: `off` (default) or `on`. Later launches use the remembered state. |
 | `system-proxy-auto` | System proxy state used only on the very first launch: `1` enabled, `0` disabled (default). |
 | `selector-menu-layout` | Node menu layout: `auto` decides by item count, `flat` shows each group as a disabled header with checkable items below, `nested` uses submenus. |
 | `log-file` | Optional log file path. Relative paths are resolved against the program folder. Empty disables logging. |
 
-The settings dialog edits `mihomo-dir`, `config-file` and `selector-menu-layout`. Saving a different core directory
-or config file restarts the program automatically.
+The settings dialog edits `mihomo-core`, `config-file` and `selector-menu-layout`. Relative paths typed manually
+are resolved against the program folder. Saving a different core file or config file restarts the program
+automatically.
 
 ### State file
 
@@ -173,7 +176,7 @@ These are mainly used internally when the program relaunches itself, but they ca
 
 ## How the core is started
 
-The core is started as `mihomo.exe -f <temporary config> -d <config folder>`. The temporary config is a copy of
+The core is started as `<selected core> -f <temporary config> -d <config folder>`. The temporary config is a copy of
 the selected YAML file with `tun.enable` forced to the wanted state, so the original file is never modified.
 `-d` points at the config folder, so relative provider and rule-set paths keep working and mihomo writes its
 `cache.db` and geo databases there.

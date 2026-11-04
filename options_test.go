@@ -11,11 +11,11 @@ func TestLoadOptionsDefaults(t *testing.T) {
 	dir := t.TempDir()
 	opts := loadOptions(filepath.Join(dir, optionsFilename))
 
-	if opts.CoreDir != dir+string(os.PathSeparator) {
-		t.Errorf("CoreDir = %q, want %q", opts.CoreDir, dir+string(os.PathSeparator))
+	if want := filepath.Join(dir, "mihomo.exe"); opts.CoreFile != want {
+		t.Errorf("CoreFile = %q, want %q", opts.CoreFile, want)
 	}
-	if opts.ConfigFile != "config.yaml" {
-		t.Errorf("ConfigFile = %q, want config.yaml", opts.ConfigFile)
+	if want := filepath.Join(dir, "config.yaml"); opts.ConfigFile != want {
+		t.Errorf("ConfigFile = %q, want %q", opts.ConfigFile, want)
 	}
 	if opts.SystemProxyAuto {
 		t.Error("SystemProxyAuto should default to false")
@@ -32,8 +32,8 @@ func TestLoadOptionsValues(t *testing.T) {
 	dir := t.TempDir()
 	ini := filepath.Join(dir, optionsFilename)
 	content := "[" + optionsSection + "]\r\n" +
-		"mihomo-dir = core\r\n" +
-		"config-file = profile.yaml\r\n" +
+		"mihomo-core = core\\mihomo-windows-amd64-v1.exe\r\n" +
+		"config-file = profile.yml\r\n" +
 		"tun-start-mode = on\r\n" +
 		"system-proxy-auto = 1\r\n" +
 		"selector-menu-layout = nested\r\n" +
@@ -43,11 +43,11 @@ func TestLoadOptionsValues(t *testing.T) {
 	}
 
 	opts := loadOptions(ini)
-	if opts.CoreDir != "core"+string(os.PathSeparator) {
-		t.Errorf("CoreDir = %q, relative paths are kept as-is", opts.CoreDir)
+	if want := filepath.Join(dir, "core", "mihomo-windows-amd64-v1.exe"); opts.CoreFile != want {
+		t.Errorf("CoreFile = %q, want %q", opts.CoreFile, want)
 	}
-	if opts.ConfigFile != "profile.yaml" {
-		t.Errorf("ConfigFile = %q", opts.ConfigFile)
+	if want := filepath.Join(dir, "profile.yml"); opts.ConfigFile != want {
+		t.Errorf("ConfigFile = %q, want %q", opts.ConfigFile, want)
 	}
 	if opts.TunStartMode != tsmOn {
 		t.Errorf("TunStartMode = %v, want on", opts.TunStartMode)
@@ -58,43 +58,45 @@ func TestLoadOptionsValues(t *testing.T) {
 	if opts.SelectorMenuLayout != smlNested {
 		t.Errorf("SelectorMenuLayout = %v, want nested", opts.SelectorMenuLayout)
 	}
-	if opts.LogFile != filepath.Join(dir, "drover.log") {
-		t.Errorf("LogFile = %q", opts.LogFile)
+	if want := filepath.Join(dir, "drover.log"); opts.LogFile != want {
+		t.Errorf("LogFile = %q, want %q", opts.LogFile, want)
 	}
 }
 
-func TestLoadOptionsRelativeConfigResolution(t *testing.T) {
+func TestLoadOptionsAbsolutePaths(t *testing.T) {
 	dir := t.TempDir()
 	ini := filepath.Join(dir, optionsFilename)
-	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("{}"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(ini, []byte("["+optionsSection+"]\nconfig-file = config.yaml\n"), 0o644); err != nil {
+	core := filepath.Join(dir, "bin", "mihomo.exe")
+	config := filepath.Join(dir, "cfg", "custom.yml")
+	content := "[" + optionsSection + "]\r\n" +
+		"mihomo-core = " + core + "\r\n" +
+		"config-file = " + config + "\r\n"
+	if err := os.WriteFile(ini, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	opts := loadOptions(ini)
+	if opts.CoreFile != core {
+		t.Errorf("CoreFile = %q, want %q", opts.CoreFile, core)
+	}
+	if opts.ConfigFile != config {
+		t.Errorf("ConfigFile = %q, want %q", opts.ConfigFile, config)
+	}
+}
+
+func TestLoadOptionsEmptyPathsUseDefaults(t *testing.T) {
+	dir := t.TempDir()
+	ini := filepath.Join(dir, optionsFilename)
+	content := "[" + optionsSection + "]\r\nmihomo-core =\r\nconfig-file =\r\n"
+	if err := os.WriteFile(ini, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := loadOptions(ini)
+	if want := filepath.Join(dir, "mihomo.exe"); opts.CoreFile != want {
+		t.Errorf("CoreFile = %q, want %q", opts.CoreFile, want)
+	}
 	if want := filepath.Join(dir, "config.yaml"); opts.ConfigFile != want {
-		t.Errorf("ConfigFile = %q, want %q", opts.ConfigFile, want)
-	}
-
-	coreDir := filepath.Join(dir, "core")
-	if err := os.Mkdir(coreDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(coreDir, "config.yaml"), []byte("{}"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(dir, "config.yaml")); err != nil {
-		t.Fatal(err)
-	}
-	iniText := "[" + optionsSection + "]\nmihomo-dir = " + coreDir + "\nconfig-file = config.yaml\n"
-	if err := os.WriteFile(ini, []byte(iniText), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	opts = loadOptions(ini)
-	if want := filepath.Join(coreDir, "config.yaml"); opts.ConfigFile != want {
 		t.Errorf("ConfigFile = %q, want %q", opts.ConfigFile, want)
 	}
 }
@@ -103,7 +105,7 @@ func TestSaveOptionsRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	ini := filepath.Join(dir, optionsFilename)
 	original := "\uFEFF; keep me\r\n[" + optionsSection + "]\r\n" +
-		"mihomo-dir = old\r\n" +
+		"mihomo-core = old.exe\r\n" +
 		"config-file = old.yaml\r\n" +
 		"selector-menu-layout = auto\r\n" +
 		"system-proxy-auto = 1\r\n"
@@ -111,8 +113,9 @@ func TestSaveOptionsRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	coreDir := filepath.Join(dir, "core") + string(os.PathSeparator)
-	if err := saveOptions(ini, coreDir, "new.yaml", smlFlat); err != nil {
+	coreFile := filepath.Join(dir, "core", "mihomo-windows-amd64.exe")
+	configFile := filepath.Join(dir, "cfg", "new.yml")
+	if err := saveOptions(ini, coreFile, configFile, smlFlat); err != nil {
 		t.Fatal(err)
 	}
 
@@ -134,11 +137,11 @@ func TestSaveOptionsRoundTrip(t *testing.T) {
 	}
 
 	opts := loadOptions(ini)
-	if opts.CoreDir != coreDir {
-		t.Errorf("CoreDir = %q, want %q", opts.CoreDir, coreDir)
+	if opts.CoreFile != coreFile {
+		t.Errorf("CoreFile = %q, want %q", opts.CoreFile, coreFile)
 	}
-	if opts.ConfigFile != "new.yaml" {
-		t.Errorf("ConfigFile = %q", opts.ConfigFile)
+	if opts.ConfigFile != configFile {
+		t.Errorf("ConfigFile = %q, want %q", opts.ConfigFile, configFile)
 	}
 	if opts.SelectorMenuLayout != smlFlat {
 		t.Errorf("SelectorMenuLayout = %v, want flat", opts.SelectorMenuLayout)
@@ -236,8 +239,8 @@ func TestINIHelpers(t *testing.T) {
 		t.Errorf("iniSet should append one line, got %d lines (was %d)", len(added), len(updated))
 	}
 
-	created := iniSet(nil, optionsSection, "mihomo-dir", `C:\x`)
-	if v, ok := iniGet(created, optionsSection, "mihomo-dir"); !ok || v != `C:\x` {
+	created := iniSet(nil, optionsSection, "mihomo-core", `C:\mihomo.exe`)
+	if v, ok := iniGet(created, optionsSection, "mihomo-core"); !ok || v != `C:\mihomo.exe` {
 		t.Errorf("iniSet on empty file failed, got %q, %v", v, ok)
 	}
 }
