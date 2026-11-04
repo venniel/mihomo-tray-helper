@@ -1,0 +1,16 @@
+# Go build output
+/mihomo-go.exe
+
+# Test core and its config (contain credentials / large binaries)
+/mihomo.exe
+/config.yaml
+
+# Runtime artifacts
+/mihomo-go.state.json
+/cache.db
+/geoip.metadb
+/geoip.dat
+/geosite.dat
+/GeoLite2-ASN.mmdb
+/ui/
+*.log
