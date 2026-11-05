@@ -100,6 +100,33 @@ func saveOptions(filename, coreFile, configFile string, layout selectorMenuLayou
 	lines = iniSet(lines, optionsSection, "config-file", configFile)
 	lines = iniSet(lines, optionsSection, "selector-menu-layout", layoutToValue(layout))
 
+	return writeTextLines(filename, lines, hadBOM)
+}
+
+// saveRuntimeState stores the current TUN and system proxy selections in the
+// program's INI file so they survive a restart without a separate state file.
+func saveRuntimeState(filename string, tun bool, systemProxy bool) error {
+	lines, hadBOM, _ := readTextLines(filename)
+	if lines == nil {
+		lines = []string{}
+	}
+
+	tunValue := "off"
+	if tun {
+		tunValue = "on"
+	}
+	proxyValue := "0"
+	if systemProxy {
+		proxyValue = "1"
+	}
+
+	lines = iniSet(lines, optionsSection, "tun-start-mode", tunValue)
+	lines = iniSet(lines, optionsSection, "system-proxy-auto", proxyValue)
+
+	return writeTextLines(filename, lines, hadBOM)
+}
+
+func writeTextLines(filename string, lines []string, hadBOM bool) error {
 	text := strings.Join(lines, "\r\n")
 	if !strings.HasSuffix(text, "\r\n") {
 		text += "\r\n"
@@ -166,6 +193,11 @@ func includeTrailingPathDelimiter(path string) string {
 func fileExists(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir()
+}
+
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // --- INI helpers ---------------------------------------------------------

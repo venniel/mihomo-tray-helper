@@ -144,9 +144,6 @@ func readMihomoConfig(text string) (mihomoConfig, error) {
 					}
 				}
 			}
-			if len(outbounds) == 0 {
-				continue
-			}
 			cfg.Selectors = append(cfg.Selectors, configSelector{
 				Name:         name,
 				Outbounds:    outbounds,

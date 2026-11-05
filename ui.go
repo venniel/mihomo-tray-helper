@@ -158,12 +158,7 @@ func (u *mainUI) initDrover() {
 	u.d.setNotifyHandle(u.hwnd)
 	u.isTunActive = u.d.isTunActive
 
-	enabled, ok := u.d.storedSystemProxy()
-	if !ok {
-		enabled = u.d.options.SystemProxyAuto
-		u.d.storeSystemProxy(enabled)
-	}
-	if enabled {
+	if u.d.options.SystemProxyAuto {
 		u.toggleSystemProxy(true, false, false)
 	}
 
@@ -398,7 +393,7 @@ func (u *mainUI) handleTray(wparam, lparam uintptr) {
 // --- Menu ----------------------------------------------------------------
 
 func (u *mainUI) showTrayMenu() {
-	u.d.refreshSelectorStates()
+	u.d.refreshSelectorSnapshot()
 
 	hmenu, _ := u.buildMenu()
 	if hmenu == 0 {
@@ -502,8 +497,20 @@ func (u *mainUI) appendModeMenu(menu uintptr) {
 }
 
 func (u *mainUI) appendNodeMenu(menu uintptr) {
-	selectors := u.d.selectors
-	count := len(selectors)
+	type nodeGroup struct {
+		index    int
+		selector configSelector
+	}
+
+	groups := make([]nodeGroup, 0, len(u.d.selectors))
+	for i, selector := range u.d.selectors {
+		if len(selector.Outbounds) == 0 {
+			continue
+		}
+		groups = append(groups, nodeGroup{index: i, selector: selector})
+	}
+
+	count := len(groups)
 	if count < 1 || count > 50 {
 		return
 	}
@@ -516,8 +523,8 @@ func (u *mainUI) appendNodeMenu(menu uintptr) {
 		isNested = true
 	default:
 		flatRows := 2 * count
-		for _, selector := range selectors {
-			flatRows += len(selector.Outbounds)
+		for _, group := range groups {
+			flatRows += len(group.selector.Outbounds)
 		}
 		isNested = flatRows > 20
 	}
@@ -533,7 +540,10 @@ func (u *mainUI) appendNodeMenu(menu uintptr) {
 	}
 
 	nextID := idMenuSelectorBase
-	for selectorIdx, selector := range selectors {
+	for position, group := range groups {
+		selectorIdx := group.index
+		selector := group.selector
+
 		var selectorMenu uintptr
 		if isNested {
 			selectorMenu, _, _ = pCreatePopupMenu.Call()
@@ -574,7 +584,7 @@ func (u *mainUI) appendNodeMenu(menu uintptr) {
 
 		if isNested {
 			appendSubMenu(sub, selectorMenu, selector.Name)
-		} else if selectorIdx < count-1 {
+		} else if position < count-1 {
 			appendMenu(sub, mfSeparator, 0, "")
 		}
 	}

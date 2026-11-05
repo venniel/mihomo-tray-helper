@@ -101,6 +101,33 @@ func TestReadMihomoConfig(t *testing.T) {
 	}
 }
 
+func TestReadMihomoConfigProviderOnlyGroups(t *testing.T) {
+	text := `
+mixed-port: 7890
+proxy-groups:
+  - name: ProviderOnly
+    type: select
+    use: [nodes]
+  - name: Mixed
+    type: select
+    proxies: [DIRECT]
+    use: [nodes]
+`
+	cfg, err := readMihomoConfig(text)
+	if err != nil {
+		t.Fatalf("readMihomoConfig: %v", err)
+	}
+	if len(cfg.Selectors) != 2 {
+		t.Fatalf("selectors = %d, want 2", len(cfg.Selectors))
+	}
+	if cfg.Selectors[0].Name != "ProviderOnly" || len(cfg.Selectors[0].Outbounds) != 0 {
+		t.Errorf("provider-only group parsed incorrectly: %+v", cfg.Selectors[0])
+	}
+	if cfg.Selectors[1].Name != "Mixed" || len(cfg.Selectors[1].Outbounds) != 1 {
+		t.Errorf("mixed group parsed incorrectly: %+v", cfg.Selectors[1])
+	}
+}
+
 func TestReadMihomoConfigInjectsAPI(t *testing.T) {
 	text := `
 mixed-port: 7890

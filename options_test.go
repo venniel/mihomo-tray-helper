@@ -151,6 +151,60 @@ func TestSaveOptionsRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSaveRuntimeState(t *testing.T) {
+	dir := t.TempDir()
+	ini := filepath.Join(dir, optionsFilename)
+	original := "; keep me\r\n[" + optionsSection + "]\r\n" +
+		"mihomo-core = mihomo.exe\r\n" +
+		"config-file = config.yaml\r\n" +
+		"tun-start-mode = off\r\n" +
+		"system-proxy-auto = 0\r\n"
+	if err := os.WriteFile(ini, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := saveRuntimeState(ini, true, true); err != nil {
+		t.Fatal(err)
+	}
+	opts := loadOptions(ini)
+	if opts.TunStartMode != tsmOn {
+		t.Errorf("TunStartMode = %v, want on", opts.TunStartMode)
+	}
+	if !opts.SystemProxyAuto {
+		t.Error("SystemProxyAuto should be true")
+	}
+	text, _, ok := readTextLines(ini)
+	if !ok {
+		t.Fatal("ini not readable after save")
+	}
+	if !strings.Contains(strings.Join(text, "\n"), "; keep me") {
+		t.Error("comment was not preserved")
+	}
+
+	if err := saveRuntimeState(ini, false, false); err != nil {
+		t.Fatal(err)
+	}
+	opts = loadOptions(ini)
+	if opts.TunStartMode != tsmOff || opts.SystemProxyAuto {
+		t.Errorf("state was not cleared: tun=%v proxy=%v", opts.TunStartMode, opts.SystemProxyAuto)
+	}
+}
+
+func TestSaveRuntimeStateCreatesFile(t *testing.T) {
+	ini := filepath.Join(t.TempDir(), optionsFilename)
+	if err := saveRuntimeState(ini, true, false); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := loadOptions(ini)
+	if opts.TunStartMode != tsmOn {
+		t.Errorf("TunStartMode = %v, want on", opts.TunStartMode)
+	}
+	if opts.SystemProxyAuto {
+		t.Error("SystemProxyAuto should be false")
+	}
+}
+
 func TestParseHelpers(t *testing.T) {
 	for _, value := range []string{"1", "true", "YES", " on "} {
 		if !parseBool(value, false) {

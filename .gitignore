@@ -6,8 +6,8 @@
 /config.yaml
 
 # Runtime artifacts
-/mihomo-go.state.json
 /cache.db
+/config/
 /geoip.metadb
 /geoip.dat
 /geosite.dat

@@ -100,15 +100,16 @@ not rewritten.
 
 ### Optional: proxy groups for node switching
 
-Groups with `type: select` are shown in the **节点** menu. The group name is the submenu title and its `proxies`
-are the items. The member currently in use is read from `GET /proxies`, so changes made from a dashboard are
-reflected as well.
+Groups with `type: select` are shown in the **节点** menu. The member list and the current selection are read
+from `GET /proxies`, so groups backed by `proxy-providers` / `use` and changes made from a dashboard are reflected
+as well.
 
 ```yaml
 proxy-groups:
   - name: Proxy
     type: select
-    proxies: [Proxy1, Proxy2]
+    proxies: [Direct]
+    use: [provider]
 ```
 
 Switching an item sends `PUT /proxies/<group>` to the Clash API and then closes existing connections, so the change
@@ -139,8 +140,8 @@ selector-menu-layout = auto
 | --- | --- |
 | `mihomo-core` | Full path to the core executable. It does not need to be named `mihomo.exe`; any filename works. |
 | `config-file` | Full path to the mihomo YAML config file (`.yaml` or `.yml`). |
-| `tun-start-mode` | TUN state used only on the very first launch: `off` (default) or `on`. Later launches use the remembered state. |
-| `system-proxy-auto` | System proxy state used only on the very first launch: `1` enabled, `0` disabled (default). |
+| `tun-start-mode` | Current TUN state: `on` or `off`. Updated automatically when TUN is toggled and applied at startup. |
+| `system-proxy-auto` | Current system proxy state: `1` enabled, `0` disabled. Updated automatically when the proxy is toggled and applied at startup. |
 | `selector-menu-layout` | Node menu layout: `auto` decides by item count, `flat` shows each group as a disabled header with checkable items below, `nested` uses submenus. |
 | `log-file` | Optional log file path. Relative paths are resolved against the program folder. Empty disables logging. |
 
@@ -148,14 +149,11 @@ The settings dialog edits `mihomo-core`, `config-file` and `selector-menu-layout
 are resolved against the program folder. Saving a different core file or config file restarts the program
 automatically.
 
-### State file
+### Runtime state
 
-Runtime state is kept in `mihomo-go.state.json` next to the executable:
-
-- `tun` — whether TUN was active on the last run
-- `system-proxy` — whether the system proxy was enabled on the last run
-
-Delete this file to fall back to `tun-start-mode` and `system-proxy-auto`.
+The TUN and system proxy selections are written back to `mihomo-go.ini` whenever they change, so no separate
+state file is used. On normal exit the system proxy is disabled but its saved preference is kept, so it is
+restored on the next launch.
 
 ### Autostart
 
@@ -176,10 +174,11 @@ These are mainly used internally when the program relaunches itself, but they ca
 
 ## How the core is started
 
-The core is started as `<selected core> -f <temporary config> -d <config folder>`. The temporary config is a copy of
-the selected YAML file with `tun.enable` forced to the wanted state, so the original file is never modified.
-`-d` points at the config folder, so relative provider and rule-set paths keep working and mihomo writes its
-`cache.db` and geo databases there.
+The core is started as `<selected core> -f <temporary config> -d <core folder>\config`. The temporary config is a
+copy of the selected YAML file with `tun.enable` forced to the wanted state, so the original file is never
+modified. The data folder is created next to the core and receives `cache.db`, the geo databases, proxy providers
+and rule sets, keeping the folder that contains the config file clean. If the config's relative `external-ui`
+folder exists next to the config file, it is passed via `-ext-ui` so the dashboard keeps working.
 
 ## Building and testing
 
@@ -208,7 +207,7 @@ executable has no runtime dependencies beyond the standard Windows system librar
 | `supervisor.go` | Core process supervision (job object, temporary config, Clash API checks) |
 | `apiclient.go` | Minimal Clash API client |
 | `config.go` | YAML parsing, requirement checks, TUN rewriting, Clash API detection |
-| `options.go`, `appstate.go` | INI options and JSON state file |
+| `options.go` | INI options and runtime state |
 | `autostart.go`, `elevation.go`, `singleinstance.go` | Windows integration helpers |
 | `systemproxy.go`, `tuncleanup.go`, `logger.go` | System proxy, Wintun cleanup, logging |
 

@@ -101,13 +101,14 @@ type coreCommand struct {
 }
 
 type coreSupervisor struct {
-	exePath   string
-	configDir string
-	logger    *logger
-	api       *coreAPIClient
-	modes     []string
-	injectAPI bool
-	onEvent   func(coreEvent)
+	exePath    string
+	homeDir    string
+	externalUI string
+	logger     *logger
+	api        *coreAPIClient
+	modes      []string
+	injectAPI  bool
+	onEvent    func(coreEvent)
 
 	commands chan coreCommand
 	stopCh   chan struct{}
@@ -132,19 +133,20 @@ type coreSupervisor struct {
 	apiDeadline    time.Time
 }
 
-func newCoreSupervisor(exePath, configDir string, cfg clashAPIConfig, injectAPI bool, modes []string,
+func newCoreSupervisor(exePath, homeDir, externalUI string, cfg clashAPIConfig, injectAPI bool, modes []string,
 	l *logger, onEvent func(coreEvent)) *coreSupervisor {
 	s := &coreSupervisor{
-		exePath:   exePath,
-		configDir: configDir,
-		logger:    l,
-		api:       newCoreAPIClient(cfg, l),
-		modes:     append([]string(nil), modes...),
-		injectAPI: injectAPI,
-		onEvent:   onEvent,
-		commands:  make(chan coreCommand, 100),
-		stopCh:    make(chan struct{}),
-		done:      make(chan struct{}),
+		exePath:    exePath,
+		homeDir:    homeDir,
+		externalUI: externalUI,
+		logger:     l,
+		api:        newCoreAPIClient(cfg, l),
+		modes:      append([]string(nil), modes...),
+		injectAPI:  injectAPI,
+		onEvent:    onEvent,
+		commands:   make(chan coreCommand, 100),
+		stopCh:     make(chan struct{}),
+		done:       make(chan struct{}),
 	}
 	atomic.StoreInt32(&s.state, int32(csStopped))
 	go s.run()
@@ -212,6 +214,55 @@ func (s *coreSupervisor) requestSetMode(mode string) bool {
 
 func (s *coreSupervisor) requestQuerySelectorStates(names []string, serial int) bool {
 	return s.post(coreCommand{Kind: cmdQuerySelectorStates, SelectorNames: names, SelectorSerial: serial})
+}
+
+const selectorSnapshotTimeout = 500 * time.Millisecond
+
+type selectorSnapshot struct {
+	States  map[string]string
+	Members map[string][]string
+}
+
+// querySelectorSnapshot reads the current member lists and selections directly
+// from the core. It is called on the UI thread right before a menu is built so
+// provider-backed groups show their real members.
+func (s *coreSupervisor) querySelectorSnapshot(names []string) selectorSnapshot {
+	snapshot := selectorSnapshot{
+		States:  make(map[string]string, len(names)),
+		Members: make(map[string][]string, len(names)),
+	}
+	if len(names) == 0 || !s.api.isConfigured() {
+		return snapshot
+	}
+
+	text, err := s.api.request("GET", "/proxies", "", selectorSnapshotTimeout)
+	if err != nil {
+		return snapshot
+	}
+
+	var payload struct {
+		Proxies map[string]struct {
+			All []string `json:"all"`
+			Now string   `json:"now"`
+		} `json:"proxies"`
+	}
+	if err := json.Unmarshal([]byte(text), &payload); err != nil {
+		return snapshot
+	}
+
+	for _, name := range names {
+		proxy, ok := payload.Proxies[name]
+		if !ok {
+			continue
+		}
+		if len(proxy.All) > 0 {
+			snapshot.Members[name] = append([]string(nil), proxy.All...)
+		}
+		if proxy.Now != "" {
+			snapshot.States[name] = proxy.Now
+		}
+	}
+	return snapshot
 }
 
 func (s *coreSupervisor) post(cmd coreCommand) bool {
@@ -308,7 +359,10 @@ func (s *coreSupervisor) startProcess(configText string) error {
 		return fmt.Errorf("CreatePipe (output) failed: %v", err)
 	}
 
-	args := []string{"-f", tempPath, "-d", s.configDir}
+	args := []string{"-f", tempPath, "-d", s.homeDir}
+	if s.externalUI != "" {
+		args = append(args, "-ext-ui", s.externalUI)
+	}
 	if s.injectAPI {
 		args = append(args, "-ext-ctl", s.api.cfg.ExternalController)
 		if s.api.cfg.Secret != "" {
@@ -317,7 +371,7 @@ func (s *coreSupervisor) startProcess(configText string) error {
 	}
 
 	cmd := exec.Command(s.exePath, args...)
-	cmd.Dir = s.configDir
+	cmd.Dir = s.homeDir
 	cmd.Stdout = outW
 	cmd.Stderr = outW
 	cmd.SysProcAttr = &syscall.SysProcAttr{

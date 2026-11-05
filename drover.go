@@ -3,15 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-)
-
-const (
-	stateFilename       = "mihomo-go.state.json"
-	stateKeyTun         = "tun"
-	stateKeySystemProxy = "system-proxy"
 )
 
 type droverEventKind int
@@ -32,8 +27,8 @@ type droverEvent struct {
 type drover struct {
 	supervisor   *coreSupervisor
 	logger       *logger
-	state        *appState
 	options      droverOptions
+	optionsFile  string
 	configPath   string
 	mihomoConfig mihomoConfig
 	selectors    []configSelector
@@ -63,7 +58,8 @@ type drover struct {
 func newDrover(flags appFlags) (*drover, error) {
 	d := &drover{}
 	d.currentProcessDir = includeTrailingPathDelimiter(filepath.Dir(currentExecutablePath()))
-	d.options = loadOptions(d.currentProcessDir + optionsFilename)
+	d.optionsFile = d.currentProcessDir + optionsFilename
+	d.options = loadOptions(d.optionsFile)
 	d.logger = newLogger(d.options.LogFile)
 
 	fail := func(err error) (*drover, error) {
@@ -88,17 +84,12 @@ func newDrover(flags appFlags) (*drover, error) {
 	d.selectors = append([]configSelector(nil), cfg.Selectors...)
 	d.clashModes = append([]string(nil), cfg.Modes...)
 
-	d.state = newAppState(d.currentProcessDir + stateFilename)
-
-	if wantsTun, ok := d.state.getBool(stateKeyTun); ok {
-		d.wantsTun = wantsTun
-	} else {
-		d.wantsTun = cfg.HasTun && d.options.TunStartMode == tsmOn
-		d.storeTun(d.wantsTun)
-	}
-
+	d.wantsTun = cfg.HasTun && d.options.TunStartMode == tsmOn
 	if flags.has(afTun) {
 		d.wantsTun = true
+		if cfg.HasTun {
+			d.storeTun(true)
+		}
 	}
 
 	d.isElevated = isProcessElevated()
@@ -108,7 +99,13 @@ func newDrover(flags appFlags) (*drover, error) {
 		return fail(errors.New("mihomo executable not found."))
 	}
 
-	d.supervisor = newCoreSupervisor(corePath, filepath.Dir(d.configPath),
+	homeDir := filepath.Join(filepath.Dir(corePath), "config")
+	if err := os.MkdirAll(homeDir, 0o755); err != nil {
+		return fail(fmt.Errorf("Failed to create the core data directory %s: %v", homeDir, err))
+	}
+
+	d.supervisor = newCoreSupervisor(corePath, homeDir,
+		resolveExternalUI(d.configPath, cfg.ClashAPI.ExternalUI),
 		cfg.ClashAPI, cfg.InjectAPI, cfg.Modes, d.logger, d.dispatchCoreEvent)
 	d.startCore(d.canUseTun() && d.wantsTun)
 
@@ -228,19 +225,21 @@ func (d *drover) needsElevation() bool {
 	return d.wantsTun && d.mihomoConfig.HasTun && !d.isElevated
 }
 
-func (d *drover) storedSystemProxy() (bool, bool) {
-	return d.state.getBool(stateKeySystemProxy)
-}
-
 func (d *drover) storeSystemProxy(value bool) {
-	if err := d.state.setBool(stateKeySystemProxy, value); err != nil {
+	d.options.SystemProxyAuto = value
+	if err := saveRuntimeState(d.optionsFile, d.options.TunStartMode == tsmOn, value); err != nil {
 		d.log(strings.TrimSpace("Failed to persist system proxy state. " + err.Error()))
 	}
 }
 
 func (d *drover) storeTun(value bool) {
 	d.wantsTun = value
-	if err := d.state.setBool(stateKeyTun, value); err != nil {
+	if value {
+		d.options.TunStartMode = tsmOn
+	} else {
+		d.options.TunStartMode = tsmOff
+	}
+	if err := saveRuntimeState(d.optionsFile, value, d.options.SystemProxyAuto); err != nil {
 		d.log(strings.TrimSpace("Failed to persist TUN state. " + err.Error()))
 	}
 }
@@ -276,6 +275,49 @@ func (d *drover) refreshSelectorStates() {
 		names = append(names, selector.Name)
 	}
 	d.selectorQueryPending = d.supervisor.requestQuerySelectorStates(names, d.selectorSerial)
+}
+
+// refreshSelectorSnapshot loads the complete member lists (including nodes from
+// proxy providers) and the current selections before the tray menu is built.
+func (d *drover) refreshSelectorSnapshot() {
+	if len(d.selectors) == 0 {
+		return
+	}
+
+	names := make([]string, 0, len(d.selectors))
+	for _, selector := range d.selectors {
+		names = append(names, selector.Name)
+	}
+
+	snapshot := d.supervisor.querySelectorSnapshot(names)
+	if d.selectorStates == nil {
+		d.selectorStates = map[string]string{}
+	}
+	for i := range d.selectors {
+		name := d.selectors[i].Name
+		if members, ok := snapshot.Members[name]; ok {
+			d.selectors[i].Outbounds = members
+			d.selectors[i].DefaultIndex = -1
+		}
+		if now, ok := snapshot.States[name]; ok {
+			d.selectorStates[name] = now
+		}
+	}
+}
+
+func resolveExternalUI(configPath, ui string) string {
+	ui = strings.TrimSpace(ui)
+	if ui == "" || filepath.IsAbs(ui) {
+		return ""
+	}
+	if hasPrefixFold(ui, "http://") || hasPrefixFold(ui, "https://") {
+		return ""
+	}
+	candidate := filepath.Join(filepath.Dir(configPath), ui)
+	if dirExists(candidate) {
+		return candidate
+	}
+	return ""
 }
 
 func (d *drover) selectorNow(name string) (string, bool) {
