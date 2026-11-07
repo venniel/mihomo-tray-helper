@@ -2,14 +2,20 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	defaultExternalController = "127.0.0.1:9090"
+	defaultExternalSecret     = "1234"
+	onlineDashboardURL        = "https://venniel.github.io/Yacd-meta/"
 )
 
 type configSelector struct {
@@ -53,15 +59,39 @@ func (c clashAPIConfig) DashboardURL() string {
 	if !c.IsConfigured() {
 		return ""
 	}
-	if ui := strings.TrimSpace(c.ExternalUI); hasPrefixFold(ui, "http://") || hasPrefixFold(ui, "https://") {
+
+	ui := strings.TrimSpace(c.ExternalUI)
+	if hasPrefixFold(ui, "http://") || hasPrefixFold(ui, "https://") {
 		return ui
 	}
-
-	base := "http://" + c.ConnectAddress() + "/ui/"
-	if c.Secret != "" {
-		base += "?secret=" + url.QueryEscape(c.Secret)
+	if ui != "" {
+		base := "http://" + c.ConnectAddress() + "/ui/"
+		if c.Secret != "" {
+			base += "?secret=" + url.QueryEscape(c.Secret)
+		}
+		return base
 	}
-	return base
+
+	values := url.Values{}
+	host, port := splitHostPort(c.ConnectAddress())
+	if host != "" {
+		values.Set("hostname", host)
+	}
+	if port != "" {
+		values.Set("port", port)
+	}
+	if c.Secret != "" {
+		values.Set("secret", c.Secret)
+	}
+	return onlineDashboardURL + "?" + values.Encode()
+}
+
+func splitHostPort(address string) (string, string) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return address, ""
+	}
+	return host, port
 }
 
 type mihomoConfig struct {
@@ -160,9 +190,9 @@ func readMihomoConfig(text string) (mihomoConfig, error) {
 		ExternalUI:         strings.TrimSpace(stringFromNode(mappingChild(root, "external-ui"))),
 		Secret:             stringFromNode(mappingChild(root, "secret")),
 	}
-	if !cfg.ClashAPI.IsConfigured() && len(cfg.Selectors) > 0 {
-		cfg.ClashAPI.ExternalController = "127.0.0.1:9090"
-		cfg.ClashAPI.Secret = newGUIDString()
+	if !cfg.ClashAPI.IsConfigured() {
+		cfg.ClashAPI.ExternalController = defaultExternalController
+		cfg.ClashAPI.Secret = defaultExternalSecret
 		cfg.InjectAPI = true
 	}
 
@@ -291,21 +321,6 @@ func intFromNode(n *yaml.Node) int {
 		return 0
 	}
 	return value
-}
-
-func newGUIDString() string {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "{00000000-0000-0000-0000-000000000000}"
-	}
-	b[6] = (b[6] & 0x0F) | 0x40
-	b[8] = (b[8] & 0x3F) | 0x80
-	return fmt.Sprintf("{%08X-%04X-%04X-%04X-%012X}",
-		uint32(b[0])<<24|uint32(b[1])<<16|uint32(b[2])<<8|uint32(b[3]),
-		uint16(b[4])<<8|uint16(b[5]),
-		uint16(b[6])<<8|uint16(b[7]),
-		uint16(b[8])<<8|uint16(b[9]),
-		uint64(b[10])<<40|uint64(b[11])<<32|uint64(b[12])<<24|uint64(b[13])<<16|uint64(b[14])<<8|uint64(b[15]))
 }
 
 func hasPrefixFold(s, prefix string) bool {

@@ -94,9 +94,15 @@ secret: change-me
 external-ui: ui # optional
 ```
 
-If the config contains `select` proxy groups but no `external-controller`, the program starts the core with
-`-ext-ctl 127.0.0.1:9090 -secret <generated>` so the API is available for the current run only; the config file is
-not rewritten.
+If `external-controller` is missing, the program starts the core with `-ext-ctl 127.0.0.1:9090 -secret 1234`;
+the config file is not rewritten.
+
+The **面板** menu item follows these rules:
+
+- with `external-ui` set, it opens the dashboard served locally at `http://<controller>/ui/`;
+- without `external-ui`, it opens the online Yacd-meta at <https://venniel.github.io/Yacd-meta> with the
+  controller host, port and secret as URL parameters;
+- an `http(s)://` value in `external-ui` is opened as-is.
 
 ### Optional: proxy groups for node switching
 

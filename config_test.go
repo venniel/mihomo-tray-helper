@@ -141,9 +141,9 @@ proxy-groups:
 		t.Fatalf("readMihomoConfig: %v", err)
 	}
 	if !cfg.InjectAPI {
-		t.Error("API should be injected when select groups exist without a controller")
+		t.Error("API should be injected when no controller is configured")
 	}
-	if cfg.ClashAPI.ExternalController != "127.0.0.1:9090" || cfg.ClashAPI.Secret == "" {
+	if cfg.ClashAPI.ExternalController != defaultExternalController || cfg.ClashAPI.Secret != defaultExternalSecret {
 		t.Errorf("injected API = %+v", cfg.ClashAPI)
 	}
 
@@ -152,8 +152,11 @@ proxy-groups:
 	if err != nil {
 		t.Fatalf("readMihomoConfig: %v", err)
 	}
-	if cfg.InjectAPI || cfg.ClashAPI.IsConfigured() {
-		t.Error("API should not be injected without select groups")
+	if !cfg.InjectAPI || !cfg.ClashAPI.IsConfigured() {
+		t.Error("API should be injected even without select groups")
+	}
+	if cfg.ClashAPI.ExternalController != defaultExternalController || cfg.ClashAPI.Secret != defaultExternalSecret {
+		t.Errorf("injected API = %+v", cfg.ClashAPI)
 	}
 }
 
@@ -244,12 +247,12 @@ func TestClashAPIDashboardURL(t *testing.T) {
 	}
 
 	cfg := clashAPIConfig{ExternalController: "127.0.0.1:9090"}
-	if got, want := cfg.DashboardURL(), "http://127.0.0.1:9090/ui/"; got != want {
+	if got, want := cfg.DashboardURL(), onlineDashboardURL+"?hostname=127.0.0.1&port=9090"; got != want {
 		t.Errorf("DashboardURL = %q, want %q", got, want)
 	}
 
 	cfg.ExternalController = "0.0.0.0:9090"
-	if got, want := cfg.DashboardURL(), "http://127.0.0.1:9090/ui/"; got != want {
+	if got, want := cfg.DashboardURL(), onlineDashboardURL+"?hostname=127.0.0.1&port=9090"; got != want {
 		t.Errorf("DashboardURL = %q, want %q", got, want)
 	}
 	if got, want := cfg.ConnectAddress(), "127.0.0.1:9090"; got != want {
@@ -257,13 +260,18 @@ func TestClashAPIDashboardURL(t *testing.T) {
 	}
 
 	cfg = clashAPIConfig{ExternalController: "127.0.0.1:9090", Secret: "a b&c"}
-	if got, want := cfg.DashboardURL(), "http://127.0.0.1:9090/ui/?secret=a+b%26c"; got != want {
+	if got, want := cfg.DashboardURL(), onlineDashboardURL+"?hostname=127.0.0.1&port=9090&secret=a+b%26c"; got != want {
 		t.Errorf("DashboardURL = %q, want %q", got, want)
+	}
+
+	cfg = clashAPIConfig{ExternalController: "127.0.0.1:9090", ExternalUI: "ui", Secret: "s3cret"}
+	if got, want := cfg.DashboardURL(), "http://127.0.0.1:9090/ui/?secret=s3cret"; got != want {
+		t.Errorf("DashboardURL with local external-ui = %q, want %q", got, want)
 	}
 
 	cfg = clashAPIConfig{ExternalController: "127.0.0.1:9090", ExternalUI: " https://example.com/ui/ "}
 	if got, want := cfg.DashboardURL(), "https://example.com/ui/"; got != want {
-		t.Errorf("DashboardURL with external-ui = %q, want %q", got, want)
+		t.Errorf("DashboardURL with URL external-ui = %q, want %q", got, want)
 	}
 }
 
