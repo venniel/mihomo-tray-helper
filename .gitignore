@@ -1,5 +1,5 @@
 # Go build output
-/mihomo-go.exe
+/Nexil.exe
 
 # Test core and its config (contain credentials / large binaries)
 /mihomo.exe

@@ -13,13 +13,13 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const autostartTaskName = "mihomo-go"
+const autostartTaskName = "Nexil"
 
 const autostartTaskXML = `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
     <Author>%s</Author>
-    <URI>\mihomo-go</URI>
+    <URI>\Nexil</URI>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
@@ -132,7 +132,7 @@ func enableAutostart() error {
 	escapedExe := xmlEscape(currentExecutablePath())
 	xmlText := fmt.Sprintf(autostartTaskXML, escapedUser, escapedUser, escapedUser, escapedExe)
 
-	file, err := os.CreateTemp("", "mihomo-go-task-*.xml")
+	file, err := os.CreateTemp("", "Nexil-task-*.xml")
 	if err != nil {
 		return fmt.Errorf("Failed to register autostart task.")
 	}

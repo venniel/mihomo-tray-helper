@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	mainWindowClass = "mihomo-go-main"
+	mainWindowClass = "Nexil-main"
 	wmAppDispatch   = wmApp + 2
 	trayIconID      = 1
 
@@ -137,7 +137,9 @@ func newMainUI(d *drover, flags appFlags) (*mainUI, error) {
 		}
 	}
 
-	hwnd := createWindowEx(0, mainWindowClass, appTitle, wsPopup, 0, 0, 0, 0, 0, 0, hInstance, 0)
+	// The message-only window is never shown, but screen readers still list it.
+	// Leave its title empty so it is not announced next to the tray icon.
+	hwnd := createWindowEx(0, mainWindowClass, "", wsPopup, 0, 0, 0, 0, 0, 0, hInstance, 0)
 	if hwnd == 0 {
 		return nil, errors.New("Failed to create main window.")
 	}

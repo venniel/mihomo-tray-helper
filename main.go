@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	appTitle = "mihomo-go"
+	appTitle = "Nexil"
 
 	homepageURL = "https://github.com/MetaCubeX/mihomo"
 
@@ -26,7 +26,9 @@ func main() {
 
 	flags := parseAppFlags(os.Args[1:])
 
-	if !acquireSingleInstance("MihomoGo_SingleInstance_Mutex", flags.has(afRestart), restartHandoffTimeoutMs) {
+	migrateLegacyOptions(programDir())
+
+	if !acquireSingleInstance("Nexil_SingleInstance_Mutex", flags.has(afRestart), restartHandoffTimeoutMs) {
 		messageBox("Another instance of this application is already running.", appTitle, mbIconError)
 		return
 	}

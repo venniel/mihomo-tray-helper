@@ -1,6 +1,6 @@
-# mihomo-go
+# Nexil
 
-A lightweight tray controller for Windows that runs the official `mihomo` core in the background and exposes a
+Nexil is a lightweight tray controller for Windows that runs the official `mihomo` core in the background and exposes a
 small, native control surface: system proxy, TUN mode, mode switching, proxy-group switching and a link to the
 Clash dashboard.
 
@@ -43,17 +43,19 @@ becoming another all-in-one GUI client.
 
 ## Getting started
 
-1. Build the program:
+1. Build the program with `.\build.ps1`, or run:
 
    ```sh
-   go build -ldflags "-H=windowsgui" -trimpath -o mihomo-go.exe .
+   go build -ldflags "-H=windowsgui" -trimpath -o Nexil.exe .
    ```
 
-2. Put `mihomo-go.exe` in any folder.
-3. Run `mihomo-go.exe`. The included `mihomo-go.ini` points at `mihomo.exe` and `config.yaml` next to the
+   `build.ps1` also regenerates the Windows version resource when `goversioninfo` is installed.
+
+2. Put `Nexil.exe` in any folder.
+3. Run `Nexil.exe`. The included `Nexil.ini` points at `mihomo.exe` and `config.yaml` next to the
    program, so the tray icon appears and the core starts immediately. Left-click the tray icon to open the settings
-   dialog, where the core executable and the config file are selected as individual files. Delete `mihomo-go.ini`
-   if you want the dialog on first launch instead.
+   dialog, where the core executable and the config file are selected as individual files. Delete `Nexil.ini`
+   (and the legacy `mihomo-go.ini`, if present) if you want the dialog on first launch instead.
 
 The tray menu and the settings dialog are in Chinese.
 
@@ -128,10 +130,11 @@ Selecting a mode sends `PATCH /configs` to the Clash API.
 
 ## Program configuration
 
-Settings are stored in `mihomo-go.ini` next to the executable:
+Settings are stored in `Nexil.ini` next to the executable. On first launch an existing
+`mihomo-go.ini` is copied to `Nexil.ini` (the old file is left in place) so previous settings keep working:
 
 ```ini
-[mihomo-go]
+[Nexil]
 mihomo-core = mihomo.exe
 config-file = config.yaml
 tun-start-mode = off
@@ -139,7 +142,7 @@ system-proxy-auto = 0
 ; Selector menu layout: "auto", "flat" or "nested"
 selector-menu-layout = auto
 ; Optional: write a log file (relative paths are resolved against the program folder)
-; log-file = mihomo-go.log
+; log-file = nexil.log
 ```
 
 | Key | Description |
@@ -157,13 +160,13 @@ automatically.
 
 ### Runtime state
 
-The TUN and system proxy selections are written back to `mihomo-go.ini` whenever they change, so no separate
+The TUN and system proxy selections are written back to `Nexil.ini` whenever they change, so no separate
 state file is used. On normal exit the system proxy is disabled but its saved preference is kept, so it is
 restored on the next launch.
 
 ### Autostart
 
-Autostart is implemented as a scheduled task named `mihomo-go` that runs the current executable at logon with the
+Autostart is implemented as a scheduled task named `Nexil` that runs the current executable at logon with the
 highest available privileges. Enabling or disabling it may prompt for UAC. If the executable is moved, re-enable
 autostart so the task points at the new path.
 
@@ -192,14 +195,29 @@ Requirements:
 
 - Go 1.27 or newer
 - `golang.org/x/sys` and `gopkg.in/yaml.v3` (resolved by `go mod download`)
+- Optional: `goversioninfo`, only to regenerate the Windows resource
+
+```powershell
+.\build.ps1
+```
+
+Or manually:
 
 ```sh
-go build -ldflags "-H=windowsgui" -trimpath -o mihomo-go.exe .
+go build -ldflags "-H=windowsgui" -trimpath -o Nexil.exe .
 go test .
 ```
 
 `-H=windowsgui` suppresses the console window. The UI is written directly against Win32 (GDI/user32/shell32), so the
 executable has no runtime dependencies beyond the standard Windows system libraries.
+
+### Windows metadata
+
+`versioninfo.json` defines the product name, description, version and copyright; `nexil.manifest` supplies the
+application manifest (asInvoker, Windows 10/11). Both and the application icon are compiled into
+`resource_windows_amd64.syso` with [goversioninfo](https://github.com/josephspurrier/goversioninfo). The .syso is
+committed, so a plain `go build` still produces a fully identified `Nexil.exe`; run `build.ps1` to regenerate it
+after changing the metadata.
 
 ### Source layout
 
@@ -207,7 +225,7 @@ executable has no runtime dependencies beyond the standard Windows system librar
 | --- | --- |
 | `main.go` | Startup, single instance, DPI/COM initialization, first-run settings, elevation |
 | `ui.go` | Tray icon, context menu, system proxy and TUN actions, autostart, shutdown |
-| `settings.go` | Win32 settings dialog and file/folder pickers |
+| `settings.go` | Win32 settings dialog and file pickers |
 | `win32.go` | Win32 bindings, structs, accessibility names, small helpers |
 | `drover.go` | Application state, selector/mode state, runtime persistence, shutdown |
 | `supervisor.go` | Core process supervision (job object, temporary config, Clash API checks) |
@@ -216,6 +234,8 @@ executable has no runtime dependencies beyond the standard Windows system librar
 | `options.go` | INI options and runtime state |
 | `autostart.go`, `elevation.go`, `singleinstance.go` | Windows integration helpers |
 | `systemproxy.go`, `tuncleanup.go`, `logger.go` | System proxy, Wintun cleanup, logging |
+| `versioninfo.json`, `nexil.manifest`, `resource_windows_amd64.syso` | Windows version information, manifest and icon resources |
+| `build.ps1` | Regenerates the Windows resource and builds `Nexil.exe` |
 
 ## Limitations
 

@@ -9,9 +9,40 @@ import (
 )
 
 const (
-	optionsFilename = "mihomo-go.ini"
-	optionsSection  = "mihomo-go"
+	optionsFilename = "Nexil.ini"
+	optionsSection  = "Nexil"
+
+	legacyOptionsFilename = "mihomo-go.ini"
+	legacyOptionsSection  = "mihomo-go"
 )
+
+// migrateLegacyOptions copies the previous settings file to Nexil.ini once, so
+// existing installations keep their core, config and runtime selections. The
+// old file is left untouched.
+func migrateLegacyOptions(dir string) {
+	newPath := filepath.Join(dir, optionsFilename)
+	if fileExists(newPath) {
+		return
+	}
+
+	oldPath := filepath.Join(dir, legacyOptionsFilename)
+	lines, hadBOM, ok := readTextLines(oldPath)
+	if !ok {
+		return
+	}
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+			name := strings.TrimSpace(trimmed[1 : len(trimmed)-1])
+			if strings.EqualFold(name, legacyOptionsSection) {
+				lines[i] = "[" + optionsSection + "]"
+			}
+		}
+	}
+
+	_ = writeTextLines(newPath, lines, hadBOM)
+}
 
 type tunStartMode int
 

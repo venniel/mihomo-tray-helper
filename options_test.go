@@ -205,6 +205,74 @@ func TestSaveRuntimeStateCreatesFile(t *testing.T) {
 	}
 }
 
+func TestMigrateLegacyOptions(t *testing.T) {
+	dir := t.TempDir()
+	legacy := filepath.Join(dir, legacyOptionsFilename)
+	content := "[" + legacyOptionsSection + "]\r\n" +
+		"mihomo-core = old.exe\r\n" +
+		"config-file = old.yaml\r\n" +
+		"tun-start-mode = on\r\n" +
+		"system-proxy-auto = 1\r\n"
+	if err := os.WriteFile(legacy, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	migrateLegacyOptions(dir)
+
+	newPath := filepath.Join(dir, optionsFilename)
+	if !fileExists(newPath) {
+		t.Fatal("legacy settings were not migrated")
+	}
+	opts := loadOptions(newPath)
+	if want := filepath.Join(dir, "old.exe"); opts.CoreFile != want {
+		t.Errorf("CoreFile = %q, want %q", opts.CoreFile, want)
+	}
+	if want := filepath.Join(dir, "old.yaml"); opts.ConfigFile != want {
+		t.Errorf("ConfigFile = %q, want %q", opts.ConfigFile, want)
+	}
+	if opts.TunStartMode != tsmOn || !opts.SystemProxyAuto {
+		t.Errorf("runtime state not migrated: tun=%v proxy=%v", opts.TunStartMode, opts.SystemProxyAuto)
+	}
+	if !fileExists(legacy) {
+		t.Error("legacy file should be left in place")
+	}
+
+	lines, _, ok := readTextLines(newPath)
+	if !ok {
+		t.Fatal("migrated file is not readable")
+	}
+	if !strings.Contains(strings.Join(lines, "\n"), "["+optionsSection+"]") {
+		t.Error("migrated file does not use the Nexil section")
+	}
+}
+
+func TestMigrateLegacyOptionsKeepsExistingFile(t *testing.T) {
+	dir := t.TempDir()
+	legacy := filepath.Join(dir, legacyOptionsFilename)
+	if err := os.WriteFile(legacy, []byte("["+legacyOptionsSection+"]\r\nconfig-file = old.yaml\r\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	current := filepath.Join(dir, optionsFilename)
+	if err := os.WriteFile(current, []byte("["+optionsSection+"]\r\nconfig-file = new.yaml\r\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	migrateLegacyOptions(dir)
+
+	opts := loadOptions(current)
+	if want := filepath.Join(dir, "new.yaml"); opts.ConfigFile != want {
+		t.Errorf("ConfigFile = %q, want existing %q", opts.ConfigFile, want)
+	}
+}
+
+func TestMigrateLegacyOptionsNoLegacyFile(t *testing.T) {
+	dir := t.TempDir()
+	migrateLegacyOptions(dir)
+	if fileExists(filepath.Join(dir, optionsFilename)) {
+		t.Error("no settings file should be created without a legacy file")
+	}
+}
+
 func TestParseHelpers(t *testing.T) {
 	for _, value := range []string{"1", "true", "YES", " on "} {
 		if !parseBool(value, false) {
