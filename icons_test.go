@@ -3,22 +3,27 @@ package main
 import "testing"
 
 func TestEmbeddedIconsLoad(t *testing.T) {
-	icons := map[string][]byte{
-		"enabled":  iconEnabledData,
-		"disabled": iconDisabledData,
-		"tun":      iconTunData,
+	if len(parseIconEntries(iconData)) == 0 {
+		t.Fatal("no icon entries")
 	}
-	for name, data := range icons {
-		if len(parseIconEntries(data)) == 0 {
-			t.Fatalf("%s: no icon entries", name)
+	for _, size := range []int{16, 20, 24, 32, 48, 256} {
+		icon := loadEmbeddedIcon(iconData, size, size)
+		if icon == 0 {
+			t.Errorf("failed to load %d px icon", size)
+			continue
 		}
-		for _, size := range []int{16, 32, 48, 256} {
-			icon := loadEmbeddedIcon(data, size, size)
-			if icon == 0 {
-				t.Errorf("%s: failed to load %d px icon", name, size)
-				continue
-			}
-			pDestroyIcon.Call(icon)
+		pDestroyIcon.Call(icon)
+	}
+}
+
+func TestEmbeddedIconSizes(t *testing.T) {
+	available := map[int]bool{}
+	for _, entry := range parseIconEntries(iconData) {
+		available[entry.width] = true
+	}
+	for _, size := range []int{16, 20, 24, 32, 48, 256} {
+		if !available[size] {
+			t.Errorf("missing %d px frame", size)
 		}
 	}
 }

@@ -219,6 +219,12 @@ application manifest (asInvoker, Windows 10/11). Both and the application icon a
 committed, so a plain `go build` still produces a fully identified `Nexil.exe`; run `build.ps1` to regenerate it
 after changing the metadata.
 
+### Icon assets
+
+`icon.svg` is the vector master for the single tray, window and executable icon. `make-icons.ps1` regenerates
+`icon.ico` (16/20/24/32/48/64/128/256 px frames) and the PNG resources (`icon.png`, `icon_512.png`). The current
+proxy state is reported by the tray tooltip.
+
 ### Source layout
 
 | File | Purpose |
@@ -235,6 +241,7 @@ after changing the metadata.
 | `autostart.go`, `elevation.go`, `singleinstance.go` | Windows integration helpers |
 | `systemproxy.go`, `tuncleanup.go`, `logger.go` | System proxy, Wintun cleanup, logging |
 | `versioninfo.json`, `nexil.manifest`, `resource_windows_amd64.syso` | Windows version information, manifest and icon resources |
+| `icon.svg`, `make-icons.ps1` | Vector icon master and ICO/PNG generator |
 | `build.ps1` | Regenerates the Windows resource and builds `Nexil.exe` |
 
 ## Limitations
