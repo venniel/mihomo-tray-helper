@@ -292,6 +292,28 @@ func (u *mainUI) currentTrayIcon() uintptr {
 	return u.hIconDisabled
 }
 
+// trayTip reports the proxying that is actually in effect, prefixed with the
+// application name so the icon is still identifiable when no mode is on. TUN
+// only counts while the core runs the TUN config, so a failed or pending start
+// never leaves a stale mode on display.
+func (u *mainUI) trayTip() string {
+	tun := u.isTunActive && u.d != nil && u.d.supervisor.currentState() == csRunning
+
+	status := ""
+	switch {
+	case tun && u.isSystemProxyActive:
+		status = "TUN 模式 + 系统代理"
+	case tun:
+		status = "TUN 模式"
+	case u.isSystemProxyActive:
+		status = "系统代理"
+	}
+	if status == "" {
+		return appTitle
+	}
+	return appTitle + ":" + status
+}
+
 func (u *mainUI) addTrayIcon() {
 	if u.hwnd == 0 {
 		return
@@ -304,7 +326,7 @@ func (u *mainUI) addTrayIcon() {
 	nid.UFlags = nifMessage | nifIcon | nifTip | nifShowTip
 	nid.UCallbackMessage = wmAppTray
 	nid.HIcon = u.currentTrayIcon()
-	copyToUTF16Array(nid.SzTip[:], appTitle)
+	copyToUTF16Array(nid.SzTip[:], u.trayTip())
 
 	r, _, _ := pShellNotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&nid)))
 	if r == 0 {
@@ -333,9 +355,9 @@ func (u *mainUI) updateTrayIcon() {
 	nid.CbSize = uint32(unsafe.Sizeof(nid))
 	nid.HWnd = u.hwnd
 	nid.UID = trayIconID
-	nid.UFlags = nifIcon | nifShowTip
+	nid.UFlags = nifIcon | nifTip | nifShowTip
 	nid.HIcon = u.currentTrayIcon()
-	copyToUTF16Array(nid.SzTip[:], appTitle)
+	copyToUTF16Array(nid.SzTip[:], u.trayTip())
 	pShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(&nid)))
 	runtime.KeepAlive(&nid)
 }
@@ -687,11 +709,12 @@ func (u *mainUI) toggleSystemProxy(enable, updateIcon, persist bool) {
 		return
 	}
 
-	u.isSystemProxyActive = enable
+	// Track what Windows actually applied, not what was requested, so the
+	// tooltip and menu never claim a state the system is not in.
 	if enable {
-		u.d.enableSystemProxy()
+		u.isSystemProxyActive = u.d.enableSystemProxy()
 	} else {
-		u.d.disableSystemProxy()
+		u.isSystemProxyActive = !u.d.disableSystemProxy()
 	}
 	if persist {
 		u.d.storeSystemProxy(enable)
@@ -722,7 +745,9 @@ func (u *mainUI) toggleTun(enable bool) {
 		return
 	}
 
-	u.toggleTunDisplay(enable, true)
+	// Turning TUN on only takes effect after the core restarts; the tray is
+	// updated from the running state instead of the request.
+	u.toggleTunDisplay(enable, !enable)
 	u.tunBusy = true
 	u.d.storeTun(enable)
 	u.d.startCore(enable)
@@ -748,6 +773,7 @@ func (u *mainUI) handleDroverEvent(event droverEvent) {
 	switch event.Kind {
 	case dekError:
 		u.tunBusy = false
+		u.updateTrayIcon()
 		u.showBalloon(event.Msg, "", niifError, 10000)
 
 	case dekRunning:
