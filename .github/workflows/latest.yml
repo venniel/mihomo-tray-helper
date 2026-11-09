@@ -1,0 +1,68 @@
+name: Latest build
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: latest-build
+  cancel-in-progress: false
+
+jobs:
+  windows-amd64:
+    runs-on: ubuntu-latest
+    env:
+      TAG: latest
+      ARTIFACT: MTH.exe
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build windows/amd64
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: go build -ldflags "-H=windowsgui" -trimpath -o "$ARTIFACT" .
+
+      - name: Publish to the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          notes=$(printf 'Automated Windows x64 build.\n\nCommit: %s\nRef: %s\nRun: %s/%s/actions/runs/%s\n' \
+            "$GITHUB_SHA" "$GITHUB_REF_NAME" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+
+          git tag -f "$TAG" "$GITHUB_SHA"
+          git push -f origin "refs/tags/$TAG"
+
+          # Drop every other release so the repository keeps a single one.
+          gh release list --limit 100 --json tagName --jq '.[].tagName' |
+            while IFS= read -r tag; do
+              if [ "$tag" != "$TAG" ]; then
+                gh release delete "$tag" --yes --cleanup-tag
+              fi
+            done
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title 'Latest build' --notes "$notes" --latest
+          else
+            gh release create "$TAG" --title 'Latest build' --notes "$notes" --latest
+          fi
+
+          # Wipe every existing asset so only this build is published.
+          gh release view "$TAG" --json assets --jq '.assets[].name' |
+            while IFS= read -r asset; do
+              gh release delete-asset "$TAG" "$asset" --yes
+            done
+
+          gh release upload "$TAG" "$ARTIFACT" --clobber
