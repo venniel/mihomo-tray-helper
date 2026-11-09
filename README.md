@@ -1,6 +1,6 @@
-# Nexil
+# mihomo tray helper
 
-Nexil is a lightweight tray controller for Windows that runs the official `mihomo` core in the background and exposes a
+mihomo tray helper (MTH) is a lightweight tray controller for Windows that runs the official `mihomo` core in the background and exposes a
 small, native control surface: system proxy, TUN mode, mode switching, proxy-group switching and a link to the
 Clash dashboard.
 
@@ -46,15 +46,15 @@ becoming another all-in-one GUI client.
 1. Build the program with `.\build.ps1`, or run:
 
    ```sh
-   go build -ldflags "-H=windowsgui" -trimpath -o Nexil.exe .
+   go build -ldflags "-H=windowsgui" -trimpath -o MTH.exe .
    ```
 
    `build.ps1` also regenerates the Windows version resource when `goversioninfo` is installed.
 
-2. Put `Nexil.exe` in any folder.
-3. Run `Nexil.exe`. The included `Nexil.ini` points at `mihomo.exe` and `config.yaml` next to the
+2. Put `MTH.exe` in any folder.
+3. Run `MTH.exe`. The included `MTH.ini` points at `mihomo.exe` and `config.yaml` next to the
    program, so the tray icon appears and the core starts immediately. Left-click the tray icon to open the settings
-   dialog, where the core executable and the config file are selected as individual files. Delete `Nexil.ini`
+   dialog, where the core executable and the config file are selected as individual files. Delete `MTH.ini`
    (and the legacy `mihomo-go.ini`, if present) if you want the dialog on first launch instead.
 
 The tray menu and the settings dialog are in Chinese.
@@ -130,11 +130,11 @@ Selecting a mode sends `PATCH /configs` to the Clash API.
 
 ## Program configuration
 
-Settings are stored in `Nexil.ini` next to the executable. On first launch an existing
-`mihomo-go.ini` is copied to `Nexil.ini` (the old file is left in place) so previous settings keep working:
+Settings are stored in `MTH.ini` next to the executable. On first launch an existing
+`mihomo-go.ini` is copied to `MTH.ini` (the old file is left in place) so previous settings keep working:
 
 ```ini
-[Nexil]
+[MTH]
 mihomo-core = mihomo.exe
 config-file = config.yaml
 tun-start-mode = off
@@ -142,7 +142,7 @@ system-proxy-auto = 0
 ; Selector menu layout: "auto", "flat" or "nested"
 selector-menu-layout = auto
 ; Optional: write a log file (relative paths are resolved against the program folder)
-; log-file = nexil.log
+; log-file = mth.log
 ```
 
 | Key | Description |
@@ -160,13 +160,13 @@ automatically.
 
 ### Runtime state
 
-The TUN and system proxy selections are written back to `Nexil.ini` whenever they change, so no separate
+The TUN and system proxy selections are written back to `MTH.ini` whenever they change, so no separate
 state file is used. On normal exit the system proxy is disabled but its saved preference is kept, so it is
 restored on the next launch.
 
 ### Autostart
 
-Autostart is implemented as a scheduled task named `Nexil` that runs the current executable at logon with the
+Autostart is implemented as a scheduled task named `MTH` that runs the current executable at logon with the
 highest available privileges. Enabling or disabling it may prompt for UAC. If the executable is moved, re-enable
 autostart so the task points at the new path.
 
@@ -204,7 +204,7 @@ Requirements:
 Or manually:
 
 ```sh
-go build -ldflags "-H=windowsgui" -trimpath -o Nexil.exe .
+go build -ldflags "-H=windowsgui" -trimpath -o MTH.exe .
 go test .
 ```
 
@@ -213,17 +213,18 @@ executable has no runtime dependencies beyond the standard Windows system librar
 
 ### Windows metadata
 
-`versioninfo.json` defines the product name, description, version and copyright; `nexil.manifest` supplies the
+`versioninfo.json` defines the product name, description, version and copyright; `mth.manifest` supplies the
 application manifest (asInvoker, Windows 10/11). Both and the application icon are compiled into
 `resource_windows_amd64.syso` with [goversioninfo](https://github.com/josephspurrier/goversioninfo). The .syso is
-committed, so a plain `go build` still produces a fully identified `Nexil.exe`; run `build.ps1` to regenerate it
+committed, so a plain `go build` still produces a fully identified `MTH.exe`; run `build.ps1` to regenerate it
 after changing the metadata.
 
 ### Icon assets
 
-`icon.svg` is the vector master for the single tray, window and executable icon. `make-icons.ps1` regenerates
-`icon.ico` (16/20/24/32/48/64/128/256 px frames) and the PNG resources (`icon.png`, `icon_512.png`). The current
-proxy state is reported by the tray tooltip.
+`icon.svg` is the vector master for the single tray, window and executable icon. `make-icons.ps1` rasterizes it with
+[resvg-cli](https://github.com/Zhengqbbb/resvg-cli) (`npm install -g resvg-cli`) and regenerates `icon.ico`
+(16/20/24/32/48/64/128/256 px frames) and the PNG resources (`icon.png`, `icon_512.png`). The current proxy state is
+reported by the tray tooltip.
 
 ### Source layout
 
@@ -240,9 +241,9 @@ proxy state is reported by the tray tooltip.
 | `options.go` | INI options and runtime state |
 | `autostart.go`, `elevation.go`, `singleinstance.go` | Windows integration helpers |
 | `systemproxy.go`, `tuncleanup.go`, `logger.go` | System proxy, Wintun cleanup, logging |
-| `versioninfo.json`, `nexil.manifest`, `resource_windows_amd64.syso` | Windows version information, manifest and icon resources |
+| `versioninfo.json`, `mth.manifest`, `resource_windows_amd64.syso` | Windows version information, manifest and icon resources |
 | `icon.svg`, `make-icons.ps1` | Vector icon master and ICO/PNG generator |
-| `build.ps1` | Regenerates the Windows resource and builds `Nexil.exe` |
+| `build.ps1` | Regenerates the Windows resource and builds `MTH.exe` |
 
 ## Limitations
 

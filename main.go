@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	appTitle = "Nexil"
+	appTitle = "mihomo tray helper"
 
 	homepageURL = "https://github.com/MetaCubeX/mihomo"
 
@@ -28,7 +28,7 @@ func main() {
 
 	migrateLegacyOptions(programDir())
 
-	if !acquireSingleInstance("Nexil_SingleInstance_Mutex", flags.has(afRestart), restartHandoffTimeoutMs) {
+	if !acquireSingleInstance("MTH_SingleInstance_Mutex", flags.has(afRestart), restartHandoffTimeoutMs) {
 		messageBox("Another instance of this application is already running.", appTitle, mbIconError)
 		return
 	}

@@ -2,74 +2,31 @@ param(
     [string]$OutDir = $PSScriptRoot
 )
 
+$ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
-function New-RoundedPath([double]$x, [double]$y, [double]$w, [double]$h, [double]$r) {
-    if ($r -lt 0) { $r = 0 }
-    $max = [Math]::Min($w, $h) / 2
-    if ($r -gt $max) { $r = $max }
-    $d = $r * 2
-    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $path.AddArc([float]$x, [float]$y, [float]$d, [float]$d, 180, 90)
-    $path.AddArc([float]($x + $w - $d), [float]$y, [float]$d, [float]$d, 270, 90)
-    $path.AddArc([float]($x + $w - $d), [float]($y + $h - $d), [float]$d, [float]$d, 0, 90)
-    $path.AddArc([float]$x, [float]($y + $h - $d), [float]$d, [float]$d, 90, 90)
-    $path.CloseFigure()
-    return $path
+$resvg = Get-Command resvg-cli -ErrorAction SilentlyContinue
+if (-not $resvg) {
+    $resvg = Get-Command resvg-js -ErrorAction SilentlyContinue
+}
+if (-not $resvg) {
+    throw 'resvg-cli is required to rasterize icon.svg. Install it with: npm install -g resvg-cli'
 }
 
-function New-IconBitmap([int]$size) {
-    $s = $size / 256.0
-    # Small sizes get a slightly larger N so the diagonal and strokes stay clear.
-    if ($size -le 20) {
-        $nScale = 1.08
-    } elseif ($size -le 24) {
-        $nScale = 1.04
-    } else {
-        $nScale = 1.0
+$svg = Join-Path $PSScriptRoot 'icon.svg'
+$tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ('mth-icons-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
+
+function Get-FramePath([int]$size) {
+    return Join-Path $tempDir "$size.png"
+}
+
+foreach ($size in @(16, 20, 24, 32, 48, 64, 128, 256, 512)) {
+    $output = Get-FramePath $size
+    & $resvg.Source --log-level error --fit-width $size $svg $output | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "resvg-cli failed to render icon.svg at $size px."
     }
-
-    $bmp = New-Object System.Drawing.Bitmap($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
-    $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-    $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
-    $g.Clear([System.Drawing.Color]::Transparent)
-
-    $tileBrush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml('#17181C'))
-    $tile = New-RoundedPath (1 * $s) (1 * $s) (254 * $s) (254 * $s) (56 * $s)
-    $g.FillPath($tileBrush, $tile)
-
-    function Point([double]$x, [double]$y) {
-        return New-Object System.Drawing.PointF(
-            [float]((($x - 128) * $nScale + 128) * $s),
-            [float]((($y - 128) * $nScale + 128) * $s))
-    }
-
-    function Draw-Segment([double]$x1, [double]$y1, [double]$x2, [double]$y2, [string]$c1, [string]$c2) {
-        $p1 = Point $x1 $y1
-        $p2 = Point $x2 $y2
-        $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
-            $p1, $p2,
-            [System.Drawing.ColorTranslator]::FromHtml($c1),
-            [System.Drawing.ColorTranslator]::FromHtml($c2))
-        $pen = New-Object System.Drawing.Pen($brush, [float](48 * $s * $nScale))
-        $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-        $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-        $pen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
-        $g.DrawLine($pen, $p1, $p2)
-        $pen.Dispose()
-        $brush.Dispose()
-    }
-
-    Draw-Segment 82 176 82 78 '#7C4DFF' '#2E90FF'
-    Draw-Segment 82 78 174 176 '#2E90FF' '#22D3EE'
-    Draw-Segment 174 176 174 90 '#22D3EE' '#12BFCB'
-
-    $tile.Dispose()
-    $tileBrush.Dispose()
-    $g.Dispose()
-    return $bmp
 }
 
 function ConvertTo-IcoDib([System.Drawing.Bitmap]$bmp) {
@@ -149,26 +106,30 @@ function Write-Ico([string]$path, [object[]]$frames) {
     $stream.Close()
 }
 
-$sizes = @(16, 20, 24, 32, 48, 64, 128, 256)
-$frames = @()
-foreach ($size in $sizes) {
-    $bmp = New-IconBitmap $size
-    if ($size -ge 256) {
-        $data = ConvertTo-IcoPng $bmp
-    } else {
-        $data = ConvertTo-IcoDib $bmp
+try {
+    $sizes = @(16, 20, 24, 32, 48, 64, 128, 256)
+    $frames = @()
+    foreach ($size in $sizes) {
+        $bmp = [System.Drawing.Bitmap]::FromFile((Get-FramePath $size))
+        if ($size -ge 256) {
+            $data = ConvertTo-IcoPng $bmp
+        } else {
+            $data = ConvertTo-IcoDib $bmp
+        }
+        $bmp.Dispose()
+        $frames += [pscustomobject]@{ Size = $size; Data = $data }
     }
+    Write-Ico (Join-Path $OutDir 'icon.ico') $frames
+
+    $bmp = [System.Drawing.Bitmap]::FromFile((Get-FramePath 256))
+    $bmp.Save((Join-Path $OutDir 'icon.png'), [System.Drawing.Imaging.ImageFormat]::Png)
     $bmp.Dispose()
-    $frames += [pscustomobject]@{ Size = $size; Data = $data }
+
+    $bmp = [System.Drawing.Bitmap]::FromFile((Get-FramePath 512))
+    $bmp.Save((Join-Path $OutDir 'icon_512.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+    $bmp.Dispose()
+
+    Write-Output 'wrote icon.ico, icon.png, icon_512.png'
+} finally {
+    Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
 }
-Write-Ico (Join-Path $OutDir 'icon.ico') $frames
-
-$png = New-IconBitmap 256
-$png.Save((Join-Path $OutDir 'icon.png'), [System.Drawing.Imaging.ImageFormat]::Png)
-$png.Dispose()
-
-$png = New-IconBitmap 512
-$png.Save((Join-Path $OutDir 'icon_512.png'), [System.Drawing.Imaging.ImageFormat]::Png)
-$png.Dispose()
-
-Write-Output 'wrote icon.ico, icon.png, icon_512.png'

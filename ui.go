@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	mainWindowClass = "Nexil-main"
+	mainWindowClass = "MTH-main"
 	wmAppDispatch   = wmApp + 2
 	trayIconID      = 1
 
@@ -270,8 +270,8 @@ func (u *mainUI) cleanup() {
 
 // --- Tray icon -----------------------------------------------------------
 
-// trayTip reports the proxying that is actually in effect, prefixed with the
-// application name so the icon is still identifiable when no mode is on. TUN
+// trayTip reports the proxying that is actually in effect. The idle state shows
+// the application name, while an active mode is prefixed with the core name. TUN
 // only counts while the core runs the TUN config, so a failed or pending start
 // never leaves a stale mode on display.
 func (u *mainUI) trayTip() string {
@@ -289,7 +289,7 @@ func (u *mainUI) trayTip() string {
 	if status == "" {
 		return appTitle
 	}
-	return appTitle + ":" + status
+	return "mihomo:" + status
 }
 
 func (u *mainUI) addTrayIcon() {

@@ -419,7 +419,7 @@ func (s *coreSupervisor) startProcess(configText string) error {
 }
 
 func writeTempConfig(configText string) (string, error) {
-	file, err := os.CreateTemp("", "Nexil-*.yaml")
+	file, err := os.CreateTemp("", "MTH-*.yaml")
 	if err != nil {
 		return "", fmt.Errorf("Failed to create a temporary configuration file: %v", err)
 	}

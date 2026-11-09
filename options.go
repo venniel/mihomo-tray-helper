@@ -9,14 +9,14 @@ import (
 )
 
 const (
-	optionsFilename = "Nexil.ini"
-	optionsSection  = "Nexil"
+	optionsFilename = "MTH.ini"
+	optionsSection  = "MTH"
 
 	legacyOptionsFilename = "mihomo-go.ini"
 	legacyOptionsSection  = "mihomo-go"
 )
 
-// migrateLegacyOptions copies the previous settings file to Nexil.ini once, so
+// migrateLegacyOptions copies the previous settings file to MTH.ini once, so
 // existing installations keep their core, config and runtime selections. The
 // old file is left untouched.
 func migrateLegacyOptions(dir string) {

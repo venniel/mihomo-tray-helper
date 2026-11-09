@@ -242,7 +242,7 @@ func TestMigrateLegacyOptions(t *testing.T) {
 		t.Fatal("migrated file is not readable")
 	}
 	if !strings.Contains(strings.Join(lines, "\n"), "["+optionsSection+"]") {
-		t.Error("migrated file does not use the Nexil section")
+		t.Error("migrated file does not use the MTH section")
 	}
 }
 

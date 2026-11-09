@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	settingsWindowClass = "Nexil-settings"
+	settingsWindowClass = "MTH-settings"
 
 	idSettingsCoreEdit     = 1001
 	idSettingsBrowseCore   = 1002
@@ -114,9 +114,9 @@ func newSettingsDialog(owner uintptr, firstRun bool, errorMessage string) (*sett
 	s.initialCoreFile = filepath.Clean(opts.CoreFile)
 	s.initialConfigFile = filepath.Clean(opts.ConfigFile)
 
-	caption := "Nexil 设置"
+	caption := "mihomo tray helper 设置"
 	if firstRun {
-		caption = "Nexil 初始设置"
+		caption = "mihomo tray helper 初始设置"
 	}
 
 	s.dpi = getSystemDPI()
