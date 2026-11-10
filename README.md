@@ -1,81 +1,69 @@
 # mihomo tray helper
 
-mihomo tray helper (MTH) is a lightweight tray controller for Windows that runs the official `mihomo` core in the background and exposes a
-small, native control surface: system proxy, TUN mode, mode switching, proxy-group switching and a link to the
-Clash dashboard.
+> 本项目是 [sing-box-drover](https://github.com/hdrover/sing-box-drover) 的 fork，在其基础上做了二次修改。感谢原作者的开源工作。
 
-The goal is to keep the full power of a normal mihomo config while adding only the Windows-specific glue, without
-becoming another all-in-one GUI client.
+mihomo tray helper（MTH）是 Windows 上的轻量托盘控制器：后台运行官方 `mihomo` 核心，对外只提供少量原生控制入口——系统代理、TUN、模式切换、节点切换和面板链接。
 
-- Uses the official `mihomo.exe` — nothing is embedded, nothing is bundled
-- One YAML config, used as-is
-- Native Win32 controls (no GUI toolkit) with explicit accessible names, so screen readers such as NVDA and
-  争渡读屏 can navigate the tray menu and settings dialog
-- Small idle footprint: no periodic HTTP polling after startup; the Clash API is contacted at startup, when the
-  menu is opened and when you switch something
+目标是保留 mihomo 配置的完整能力，只补 Windows 相关的胶水代码，不做成又一个一体化 GUI 客户端。
 
-## Features
+- 使用官方 `mihomo.exe`，不内嵌、不打包核心
+- 原样使用一个 YAML 配置
+- 原生 Win32 控件（不依赖 GUI 框架），控件带明确的无障碍名称，NVDA、争渡读屏等读屏软件可操作托盘菜单和设置对话框
+- 空闲开销小：启动后不轮询 HTTP，仅在启动、打开菜单和切换开关时访问 Clash API
 
-- Tray icon reflects the current state: TUN active, system proxy enabled, or idle
-- Left-click the tray icon to open the settings dialog
-- Right-click for the context menu:
-    - **更多** (More) — restart, autostart, project page
-    - **模式** (Mode) — rule / global / direct (plus script when the config has a script)
-    - **节点** (Nodes) — `select` proxy groups; the member currently used by the core is marked, even when it was
-      changed from outside this program (for example from the dashboard)
-    - **TUN 模式** (TUN mode) — available when the config contains a `tun` section; asks for elevation when needed
-    - **系统代理** (System proxy) — toggles the Windows proxy settings
-    - **面板** (Dashboard) — opens the Clash dashboard
-    - **退出** (Quit) — gracefully stops the core and exits
-- The system proxy is restored on the next launch when it was left enabled, and is disabled on normal exit
-- TUN state is remembered across restarts; enabling TUN relaunches the program elevated (UAC)
-- Single instance per user session; starting a second copy is refused
-- Optional autostart through a scheduled task
+## 功能
 
-## Requirements
+- 托盘图标反映当前状态：TUN 生效、系统代理开启或空闲
+- 左键单击托盘图标打开设置对话框
+- 右键菜单：
+    - **更多** — 重启、开机自启、项目主页
+    - **模式** — rule / global / direct（配置含 `script` 时另有 script）
+    - **节点** — `select` 代理组；当前被核心使用的成员会打勾，包括在面板等外部途径更改的选择
+    - **TUN 模式** — 配置含 `tun` 段时可用，需要时请求提权
+    - **系统代理** — 切换 Windows 代理设置
+    - **面板** — 打开 Clash 面板
+    - **退出** — 正常停止核心并退出
+- 正常退出时关闭系统代理；上次未关闭的代理状态会在下次启动时恢复
+- TUN 状态跨重启保留；开启 TUN 会以提权方式（UAC）重启程序
+- 每个用户会话只允许一个实例，重复启动会被拒绝
+- 可选通过计划任务实现开机自启
 
-- Windows 10 or later (64-bit)
-- The official `mihomo` for Windows, downloaded from the upstream project:
-  <https://github.com/MetaCubeX/mihomo/releases>. The file may keep its download name such as
-  `mihomo-windows-amd64-v1.19.33.exe`; select it directly in the settings dialog.
-- For TUN mode, a working `wintun.dll` and administrator rights are required
-- A mihomo YAML config that satisfies the requirements below
+## 运行要求
 
-## Getting started
+- Windows 10 及以上（64 位）
+- 官方 Windows 版 `mihomo`，从上游项目下载：<https://github.com/MetaCubeX/mihomo/releases>。文件可保留下载名（如 `mihomo-windows-amd64-v1.19.33.exe`），在设置对话框中选择即可
+- TUN 模式需要可用的 `wintun.dll` 和管理员权限
+- 满足下述要求的 mihomo YAML 配置
 
-1. Build the program with `.\build.ps1`, or run:
+## 快速开始
+
+1. 用 `.\build.ps1` 构建，或执行：
 
    ```sh
    go build -ldflags "-H=windowsgui" -trimpath -o MTH.exe .
    ```
 
-   `build.ps1` also regenerates the Windows version resource when `goversioninfo` is installed.
+   安装了 `goversioninfo` 时，`build.ps1` 还会重新生成 Windows 版本资源。
 
-2. Put `MTH.exe` in any folder.
-3. Run `MTH.exe`. The included `MTH.ini` points at `mihomo.exe` and `config.yaml` next to the
-   program, so the tray icon appears and the core starts immediately. Left-click the tray icon to open the settings
-   dialog, where the core executable and the config file are selected as individual files. Delete `MTH.ini`
-   (and the legacy `mihomo-go.ini`, if present) if you want the dialog on first launch instead.
+2. 将 `MTH.exe` 放到任意目录。
+3. 运行 `MTH.exe`。随附的 `MTH.ini` 指向程序目录下的 `mihomo.exe` 和 `config.yaml`，托盘图标即时出现、核心立即启动。左键单击托盘图标打开设置对话框，核心可执行文件和配置文件分别按文件选择。若希望首次启动就显示对话框，删除 `MTH.ini`（以及存在的旧文件 `mihomo-go.ini`）即可。
 
-The tray menu and the settings dialog are in Chinese.
+托盘菜单和设置对话框为中文。
 
-## mihomo configuration requirements
+## mihomo 配置要求
 
-### Required: a proxy port
+### 必须：代理端口
 
-The program reads `mixed-port` first, then `port`, then `socks-port`, to configure the Windows system proxy. The
-listen address comes from `bind-address`; a wildcard value (`*`, `0.0.0.0`, `::`) is mapped to `127.0.0.1` for
-the system proxy.
+程序依次读取 `mixed-port`、`port`、`socks-port` 来配置 Windows 系统代理。监听地址取自 `bind-address`，通配值（`*`、`0.0.0.0`、`::`）会映射为 `127.0.0.1`。
 
 ```yaml
 mixed-port: 7890
 bind-address: '*'
 ```
 
-### Optional: tun section
+### 可选：tun 段
 
-If the config contains a top-level `tun` section, the TUN menu item appears. TUN mode is started by rewriting
-`tun.enable` in an in-memory copy of the config; the file on disk is never modified.
+配置含顶层 `tun` 段时显示 TUN 菜单项。TUN 通过改写内存中配置副本的 `tun.enable` 启动，磁盘文件不会被修改。
 
 ```yaml
 tun:
@@ -84,33 +72,29 @@ tun:
   auto-route: true
 ```
 
-When TUN is disabled, the core is started with a temporary copy of the config where `tun.enable` is `false`.
+禁用 TUN 时，核心使用 `tun.enable` 为 `false` 的临时配置副本启动。
 
-### Optional: Clash API
+### 可选：Clash API
 
-Group switching, mode switching and the dashboard link use the Clash API:
+节点切换、模式切换和面板链接依赖 Clash API：
 
 ```yaml
 external-controller: '127.0.0.1:9090'
 secret: change-me
-external-ui: ui # optional
+external-ui: ui # 可选
 ```
 
-If `external-controller` is missing, the program starts the core with `-ext-ctl 127.0.0.1:9090 -secret 1234`;
-the config file is not rewritten.
+缺少 `external-controller` 时，程序以 `-ext-ctl 127.0.0.1:9090 -secret 1234` 启动核心，不重写配置文件。
 
-The **面板** menu item follows these rules:
+**面板**菜单项的行为：
 
-- with `external-ui` set, it opens the dashboard served locally at `http://<controller>/ui/`;
-- without `external-ui`, it opens the online Yacd-meta at <https://venniel.github.io/Yacd-meta> with the
-  controller host, port and secret as URL parameters;
-- an `http(s)://` value in `external-ui` is opened as-is.
+- 设置了 `external-ui`：打开本地面板 `http://<controller>/ui/`
+- 未设置 `external-ui`：打开在线 Yacd-meta <https://venniel.github.io/Yacd-meta>，controller 主机、端口和 secret 作为 URL 参数
+- `external-ui` 为 `http(s)://` 地址：按原值打开
 
-### Optional: proxy groups for node switching
+### 可选：节点切换用的代理组
 
-Groups with `type: select` are shown in the **节点** menu. The member list and the current selection are read
-from `GET /proxies`, so groups backed by `proxy-providers` / `use` and changes made from a dashboard are reflected
-as well.
+`type: select` 的组会显示在**节点**菜单中。成员列表和当前选择来自 `GET /proxies`，因此 `proxy-providers` / `use` 支持的组以及在面板中的改动同样生效。
 
 ```yaml
 proxy-groups:
@@ -120,18 +104,15 @@ proxy-groups:
     use: [provider]
 ```
 
-Switching an item sends `PUT /proxies/<group>` to the Clash API and then closes existing connections, so the change
-applies immediately.
+切换节点会向 Clash API 发送 `PUT /proxies/<group>`，随后关闭现有连接，改动立即生效。
 
-### Modes
+### 模式
 
-The **模式** menu offers `rule`, `global` and `direct`, plus `script` when the config contains a `script` section.
-Selecting a mode sends `PATCH /configs` to the Clash API.
+**模式**菜单提供 `rule`、`global`、`direct`，配置含 `script` 段时增加 `script`。选择模式会发送 `PATCH /configs`。
 
-## Program configuration
+## 程序配置
 
-Settings are stored in `MTH.ini` next to the executable. On first launch an existing
-`mihomo-go.ini` is copied to `MTH.ini` (the old file is left in place) so previous settings keep working:
+设置保存在可执行文件旁的 `MTH.ini`。首次启动时若存在 `mihomo-go.ini`，会复制为 `MTH.ini`（旧文件保留），旧设置继续生效：
 
 ```ini
 [MTH]
@@ -139,115 +120,97 @@ mihomo-core = mihomo.exe
 config-file = config.yaml
 tun-start-mode = off
 system-proxy-auto = 0
-; Selector menu layout: "auto", "flat" or "nested"
+; 节点菜单布局："auto"、"flat" 或 "nested"
 selector-menu-layout = auto
-; Optional: write a log file (relative paths are resolved against the program folder)
+; 可选：写入日志文件（相对路径按程序目录解析）
 ; log-file = mth.log
 ```
 
-| Key | Description |
+| 键 | 说明 |
 | --- | --- |
-| `mihomo-core` | Full path to the core executable. It does not need to be named `mihomo.exe`; any filename works. |
-| `config-file` | Full path to the mihomo YAML config file (`.yaml` or `.yml`). |
-| `tun-start-mode` | Current TUN state: `on` or `off`. Updated automatically when TUN is toggled and applied at startup. |
-| `system-proxy-auto` | Current system proxy state: `1` enabled, `0` disabled. Updated automatically when the proxy is toggled and applied at startup. |
-| `selector-menu-layout` | Node menu layout: `auto` decides by item count, `flat` shows each group as a disabled header with checkable items below, `nested` uses submenus. |
-| `log-file` | Optional log file path. Relative paths are resolved against the program folder. Empty disables logging. |
+| `mihomo-core` | 核心可执行文件的完整路径，不要求命名为 `mihomo.exe`。 |
+| `config-file` | mihomo YAML 配置的完整路径（`.yaml` 或 `.yml`）。 |
+| `tun-start-mode` | 当前 TUN 状态：`on` / `off`。切换时自动更新，启动时生效。 |
+| `system-proxy-auto` | 当前系统代理状态：`1` 开启，`0` 关闭。切换时自动更新，启动时生效。 |
+| `selector-menu-layout` | 节点菜单布局：`auto` 按数量决定，`flat` 每组为禁用标题加可勾选项，`nested` 使用子菜单。 |
+| `log-file` | 可选日志路径，相对路径按程序目录解析；留空则不记日志。 |
 
-The settings dialog edits `mihomo-core`, `config-file` and `selector-menu-layout`. Relative paths typed manually
-are resolved against the program folder. Saving a different core file or config file restarts the program
-automatically.
+设置对话框可编辑 `mihomo-core`、`config-file` 和 `selector-menu-layout`；手动输入的相对路径按程序目录解析。保存不同的核心或配置文件后程序会自动重启。
 
-### Runtime state
+### 运行时状态
 
-The TUN and system proxy selections are written back to `MTH.ini` whenever they change, so no separate
-state file is used. On normal exit the system proxy is disabled but its saved preference is kept, so it is
-restored on the next launch.
+TUN 和系统代理的选择变化会即时写回 `MTH.ini`，不使用独立状态文件。正常退出时关闭系统代理但保留偏好，下次启动时恢复。
 
-### Autostart
+### 开机自启
 
-Autostart is implemented as a scheduled task named `MTH` that runs the current executable at logon with the
-highest available privileges. Enabling or disabling it may prompt for UAC. If the executable is moved, re-enable
-autostart so the task points at the new path.
+自启由计划任务 `MTH` 实现：登录时以最高可用权限运行当前可执行文件。启用或禁用可能触发 UAC。可执行文件移动后需重新启用自启，使任务指向新路径。
 
-## Command-line switches
+## 命令行参数
 
-These are mainly used internally when the program relaunches itself, but they can also be passed manually:
+主要用于程序自我重启，也可手动传入：
 
-| Switch | Effect |
+| 参数 | 作用 |
 | --- | --- |
-| `-tun` | Start with TUN enabled (requests elevation if needed). |
-| `-restart` | Wait for an already running instance to exit before starting. |
-| `-autostart-enable` | Create the autostart scheduled task. |
-| `-autostart-disable` | Remove the autostart scheduled task. |
+| `-tun` | 以 TUN 开启状态启动（需要时请求提权）。 |
+| `-restart` | 等待已运行实例退出后再启动。 |
+| `-autostart-enable` | 创建自启计划任务。 |
+| `-autostart-disable` | 删除自启计划任务。 |
 
-## How the core is started
+## 核心的启动方式
 
-The core is started as `<selected core> -f <temporary config> -d <core folder>\config`. The temporary config is a
-copy of the selected YAML file with `tun.enable` forced to the wanted state, so the original file is never
-modified. The data folder is created next to the core and receives `cache.db`, the geo databases, proxy providers
-and rule sets, keeping the folder that contains the config file clean. If the config's relative `external-ui`
-folder exists next to the config file, it is passed via `-ext-ui` so the dashboard keeps working.
+核心以 `<所选核心> -f <临时配置> -d <核心目录>\config` 启动。临时配置是所选 YAML 的副本，其中 `tun.enable` 被强制为目标状态，原文件不会被修改。数据目录建在核心旁边，存放 `cache.db`、geo 数据库、provider 和规则集，保持配置文件所在目录整洁。若配置中相对的 `external-ui` 目录存在于配置文件旁，会通过 `-ext-ui` 传入，面板可继续使用。
 
-## Building and testing
+## 构建与测试
 
-Requirements:
+要求：
 
-- Go 1.27 or newer
-- `golang.org/x/sys` and `gopkg.in/yaml.v3` (resolved by `go mod download`)
-- Optional: `goversioninfo`, only to regenerate the Windows resource
+- Go 1.27 或更高版本
+- `golang.org/x/sys` 和 `gopkg.in/yaml.v3`（由 `go mod download` 获取）
+- 可选：`goversioninfo`，仅用于重新生成 Windows 资源
 
 ```powershell
 .\build.ps1
 ```
 
-Or manually:
+或手动执行：
 
 ```sh
 go build -ldflags "-H=windowsgui" -trimpath -o MTH.exe .
 go test .
 ```
 
-`-H=windowsgui` suppresses the console window. The UI is written directly against Win32 (GDI/user32/shell32), so the
-executable has no runtime dependencies beyond the standard Windows system libraries.
+`-H=windowsgui` 会隐藏控制台窗口。UI 直接基于 Win32（GDI/user32/shell32）编写，除 Windows 系统库外没有运行时依赖。
 
-### Windows metadata
+### Windows 元数据
 
-`versioninfo.json` defines the product name, description, version and copyright; `mth.manifest` supplies the
-application manifest (asInvoker, Windows 10/11). Both and the application icon are compiled into
-`resource_windows_amd64.syso` with [goversioninfo](https://github.com/josephspurrier/goversioninfo). The .syso is
-committed, so a plain `go build` still produces a fully identified `MTH.exe`; run `build.ps1` to regenerate it
-after changing the metadata.
+`versioninfo.json` 定义产品名称、描述、版本和版权；`mth.manifest` 提供应用清单（asInvoker，Windows 10/11）。二者与图标一起由 [goversioninfo](https://github.com/josephspurrier/goversioninfo) 编译进 `resource_windows_amd64.syso`。该 .syso 已提交，直接 `go build` 也能得到带完整信息的 `MTH.exe`；修改元数据后运行 `build.ps1` 重新生成。
 
-### Icon assets
+### 图标资源
 
-`icon.svg` is the vector master for the single tray, window and executable icon. `make-icons.ps1` rasterizes it with
-[resvg-cli](https://github.com/Zhengqbbb/resvg-cli) (`npm install -g resvg-cli`) and regenerates `icon.ico`
-(16/20/24/32/48/64/128/256 px frames) and the PNG resources (`icon.png`, `icon_512.png`). The current proxy state is
-reported by the tray tooltip.
+`icon.svg` 是托盘、窗口和可执行文件图标的矢量母版。`make-icons.ps1` 使用 [resvg-cli](https://github.com/Zhengqbbb/resvg-cli)（`npm install -g resvg-cli`）渲染它，并重新生成 `icon.ico`（16/20/24/32/48/64/128/256 px 帧）和 PNG 资源（`icon.png`、`icon_512.png`）。
 
-### Source layout
+### 源码结构
 
-| File | Purpose |
+| 文件 | 用途 |
 | --- | --- |
-| `main.go` | Startup, single instance, DPI/COM initialization, first-run settings, elevation |
-| `ui.go` | Tray icon, context menu, system proxy and TUN actions, autostart, shutdown |
-| `settings.go` | Win32 settings dialog and file pickers |
-| `win32.go` | Win32 bindings, structs, accessibility names, small helpers |
-| `drover.go` | Application state, selector/mode state, runtime persistence, shutdown |
-| `supervisor.go` | Core process supervision (job object, temporary config, Clash API checks) |
-| `apiclient.go` | Minimal Clash API client |
-| `config.go` | YAML parsing, requirement checks, TUN rewriting, Clash API detection |
-| `options.go` | INI options and runtime state |
-| `autostart.go`, `elevation.go`, `singleinstance.go` | Windows integration helpers |
-| `systemproxy.go`, `tuncleanup.go`, `logger.go` | System proxy, Wintun cleanup, logging |
-| `versioninfo.json`, `mth.manifest`, `resource_windows_amd64.syso` | Windows version information, manifest and icon resources |
-| `icon.svg`, `make-icons.ps1` | Vector icon master and ICO/PNG generator |
-| `build.ps1` | Regenerates the Windows resource and builds `MTH.exe` |
+| `main.go` | 启动、单实例、DPI/COM 初始化、首次运行设置、提权 |
+| `ui.go` | 托盘图标、右键菜单、系统代理与 TUN 操作、自启、退出 |
+| `settings.go` | Win32 设置对话框和文件选择器 |
+| `win32.go` | Win32 绑定、结构体、无障碍名称、辅助函数 |
+| `drover.go` | 应用状态、节点/模式状态、运行时持久化、退出 |
+| `supervisor.go` | 核心进程管理（Job 对象、临时配置、Clash API 检查） |
+| `apiclient.go` | 精简的 Clash API 客户端 |
+| `config.go` | YAML 解析、要求检查、TUN 改写、Clash API 探测 |
+| `options.go` | INI 选项和运行时状态 |
+| `autostart.go`、`elevation.go`、`singleinstance.go` | Windows 集成辅助 |
+| `systemproxy.go`、`tuncleanup.go`、`logger.go` | 系统代理、Wintun 清理、日志 |
+| `versioninfo.json`、`mth.manifest`、`resource_windows_amd64.syso` | Windows 版本信息、清单和图标资源 |
+| `icon.svg`、`make-icons.ps1` | 矢量图标母版与 ICO/PNG 生成脚本 |
+| `build.ps1` | 重新生成 Windows 资源并构建 `MTH.exe` |
 
-## Limitations
+## 限制
 
-- Only one config file at a time; there is no profile switching in the UI.
-- Group selections are not stored by this program; mihomo's own `cache.db` decides whether they survive a restart.
-- TUN mode requires an elevated process and a `tun` section.
-- The program does not modify the mihomo config file; TUN changes are per-run only.
+- 一次只能使用一个配置文件，UI 不提供配置切换。
+- 节点选择不由本程序保存，是否跨重启保留取决于 mihomo 的 `cache.db`。
+- TUN 模式需要提升权限，且配置中必须有 `tun` 段。
+- 本程序不修改 mihomo 配置文件，TUN 改动仅对本次运行有效。
