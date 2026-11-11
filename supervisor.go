@@ -82,13 +82,12 @@ type coreCommandKind int
 const (
 	cmdNone coreCommandKind = iota
 	cmdStart
-	cmdStop
 	cmdSetSelectors
 	cmdSetMode
 	cmdQuerySelectorStates
 )
 
-var coreCommandNames = [...]string{"None", "Start", "Stop", "SetSelectors", "SetMode", "QuerySelectorStates"}
+var coreCommandNames = [...]string{"None", "Start", "SetSelectors", "SetMode", "QuerySelectorStates"}
 
 type coreCommand struct {
 	Kind           coreCommandKind
@@ -200,10 +199,6 @@ func (s *coreSupervisor) requestStart(configText string) {
 	s.post(coreCommand{Kind: cmdStart, ConfigText: configText})
 }
 
-func (s *coreSupervisor) requestStop() {
-	s.post(coreCommand{Kind: cmdStop})
-}
-
 func (s *coreSupervisor) requestSetSelectors(tasks []selectorTask, requestID int) bool {
 	return s.post(coreCommand{Kind: cmdSetSelectors, SelectorTasks: tasks, RequestID: requestID})
 }
@@ -293,8 +288,6 @@ func (s *coreSupervisor) handleCommand(cmd coreCommand) {
 	switch cmd.Kind {
 	case cmdStart:
 		s.doStart(cmd.ConfigText)
-	case cmdStop:
-		s.stopGraceful()
 	case cmdSetSelectors:
 		s.doSetSelectors(cmd.SelectorTasks, cmd.RequestID)
 	case cmdSetMode:

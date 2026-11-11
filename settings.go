@@ -204,13 +204,6 @@ func (s *settingsDialog) createControl(className, text string, style, exStyle ui
 		s.hwnd, uintptr(id), getModuleHandle(), 0)
 }
 
-func (s *settingsDialog) currentFont() uintptr {
-	if len(s.fonts) == 0 {
-		return 0
-	}
-	return s.fonts[len(s.fonts)-1]
-}
-
 func (s *settingsDialog) layoutControls() {
 	font := createUiFont(s.dpi)
 	s.fonts = append(s.fonts, font)
