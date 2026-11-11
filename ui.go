@@ -527,9 +527,9 @@ func (u *mainUI) appendNodeMenu(menu uintptr) {
 		isNested = flatRows > 20
 	}
 
-	disabled := map[int]bool{}
+	disabled := make(map[selectorAction]bool, len(u.pending))
 	for _, action := range u.pending {
-		disabled[action.SelectorIndex*1000+action.OutboundIndex] = true
+		disabled[action] = true
 	}
 
 	sub, _, _ := pCreatePopupMenu.Call()
@@ -563,16 +563,17 @@ func (u *mainUI) appendNodeMenu(menu uintptr) {
 		}
 
 		for outboundIdx, outbound := range selector.Outbounds {
+			action := selectorAction{SelectorIndex: selectorIdx, OutboundIndex: outboundIdx}
 			flags := uintptr(mfString)
 			if outboundIdx == checkedIndex {
 				flags |= mfChecked
 			}
-			if disabled[selectorIdx*1000+outboundIdx] {
+			if disabled[action] {
 				flags |= mfGrayed
 			}
 			id := uint32(nextID)
 			nextID++
-			u.menuActions[id] = selectorAction{SelectorIndex: selectorIdx, OutboundIndex: outboundIdx}
+			u.menuActions[id] = action
 			if isNested {
 				appendMenu(selectorMenu, flags, uintptr(id), outbound)
 			} else {

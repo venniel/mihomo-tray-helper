@@ -206,16 +206,25 @@ func (s *settingsDialog) createControl(className, text string, style, exStyle ui
 
 func (s *settingsDialog) layoutControls() {
 	font := createUiFont(s.dpi)
-	s.fonts = append(s.fonts, font)
+	if font != 0 {
+		previousFonts := s.fonts
+		s.fonts = []uintptr{font}
 
-	for _, hwnd := range []uintptr{
-		s.hCoreLabel, s.hCoreEdit, s.hBrowseCore,
-		s.hConfigLabel, s.hConfigEdit, s.hBrowseConfig,
-		s.hLayoutLabel, s.hLayoutCombo,
-		s.hErrorLabel, s.hSave, s.hCancelButton,
-	} {
-		if hwnd != 0 {
-			setWindowFont(hwnd, font)
+		for _, hwnd := range []uintptr{
+			s.hCoreLabel, s.hCoreEdit, s.hBrowseCore,
+			s.hConfigLabel, s.hConfigEdit, s.hBrowseConfig,
+			s.hLayoutLabel, s.hLayoutCombo,
+			s.hErrorLabel, s.hSave, s.hCancelButton,
+		} {
+			if hwnd != 0 {
+				setWindowFont(hwnd, font)
+			}
+		}
+
+		for _, old := range previousFonts {
+			if old != 0 {
+				pDeleteObject.Call(old)
+			}
 		}
 	}
 
