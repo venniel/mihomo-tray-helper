@@ -30,7 +30,7 @@ jobs:
           GOOS: windows
           GOARCH: amd64
           CGO_ENABLED: '0'
-        run: go build -ldflags "-H=windowsgui" -trimpath -o "$ARTIFACT" .
+        run: go build -ldflags "-H=windowsgui -s -w" -trimpath -o "$ARTIFACT" .
 
       - name: Publish to the latest release
         env:

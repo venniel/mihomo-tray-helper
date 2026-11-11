@@ -40,7 +40,7 @@ mihomo tray helper（MTH）是 Windows 上的轻量托盘控制器：后台运�
 1. 用 `.\build.ps1` 构建，或执行：
 
    ```sh
-   go build -ldflags "-H=windowsgui" -trimpath -o MTH.exe .
+   go build -ldflags "-H=windowsgui -s -w" -trimpath -o MTH.exe .
    ```
 
    安装了 `goversioninfo` 时，`build.ps1` 还会重新生成 Windows 版本资源。
@@ -175,7 +175,7 @@ TUN 和系统代理的选择变化会即时写回 `MTH.ini`，不使用独立状
 或手动执行：
 
 ```sh
-go build -ldflags "-H=windowsgui" -trimpath -o MTH.exe .
+go build -ldflags "-H=windowsgui -s -w" -trimpath -o MTH.exe .
 go test .
 ```
 

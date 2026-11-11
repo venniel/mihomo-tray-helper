@@ -8,4 +8,4 @@ if ($goversioninfo) {
     throw 'resource_windows_amd64.syso is missing and goversioninfo is not installed.'
 }
 
-go build -ldflags '-H=windowsgui' -trimpath -o MTH.exe .
+go build -ldflags '-H=windowsgui -s -w' -trimpath -o MTH.exe .

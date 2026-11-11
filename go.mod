@@ -1,4 +1,4 @@
-module mihomo-go
+module github.com/venniel/mihomo-tray-helper
 
 go 1.27.3
 
