@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: latest-build
@@ -20,6 +21,17 @@ jobs:
       ARTIFACT: MTH.exe
     steps:
       - uses: actions/checkout@v7
+
+      - name: Prune completed workflow runs
+        continue-on-error: true
+        uses: Mattraks/delete-workflow-runs@b3018382ca039b53d238908238bd35d1fb14f8ee # v2.1.0
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          # 0 deletes every completed run; the running and queued runs are skipped.
+          keep_minimum_runs: 0
+          delete_workflow_pattern: latest.yml
 
       - uses: actions/setup-go@v7
         with:
