@@ -121,15 +121,18 @@ try {
     }
     Write-Ico (Join-Path $OutDir 'icon.ico') $frames
 
+    $assetsDir = Join-Path $OutDir 'assets'
+    New-Item -ItemType Directory -Force -Path $assetsDir | Out-Null
+
     $bmp = [System.Drawing.Bitmap]::FromFile((Get-FramePath 256))
-    $bmp.Save((Join-Path $OutDir 'icon.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+    $bmp.Save((Join-Path $assetsDir 'icon.png'), [System.Drawing.Imaging.ImageFormat]::Png)
     $bmp.Dispose()
 
     $bmp = [System.Drawing.Bitmap]::FromFile((Get-FramePath 512))
-    $bmp.Save((Join-Path $OutDir 'icon_512.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+    $bmp.Save((Join-Path $assetsDir 'icon_512.png'), [System.Drawing.Imaging.ImageFormat]::Png)
     $bmp.Dispose()
 
-    Write-Output 'wrote icon.ico, icon.png, icon_512.png'
+    Write-Output 'wrote icon.ico, assets/icon.png, assets/icon_512.png'
 } finally {
     Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
 }

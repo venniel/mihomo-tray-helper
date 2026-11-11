@@ -187,7 +187,7 @@ go test .
 
 ### 图标资源
 
-`icon.svg` 是托盘、窗口和可执行文件图标的矢量母版。`make-icons.ps1` 使用 [resvg-cli](https://github.com/Zhengqbbb/resvg-cli)（`npm install -g resvg-cli`）渲染它，并重新生成 `icon.ico`（16/20/24/32/48/64/128/256 px 帧）和 PNG 资源（`icon.png`、`icon_512.png`）。
+`icon.svg` 是托盘、窗口和可执行文件图标的矢量母版。`make-icons.ps1` 使用 [resvg-cli](https://github.com/Zhengqbbb/resvg-cli)（`npm install -g resvg-cli`）渲染它，并重新生成根目录的 `icon.ico`（16/20/24/32/48/64/128/256 px 帧）以及 `assets/` 下的 `icon.png`、`icon_512.png`。
 
 ### 源码结构
 
@@ -207,6 +207,7 @@ go test .
 | `systemproxy.go`、`tuncleanup.go`、`logger.go` | 系统代理、Wintun 清理、日志 |
 | `versioninfo.json`、`mth.manifest`、`resource_windows_amd64.syso` | Windows 版本信息、清单和图标资源 |
 | `icon.svg`、`make-icons.ps1` | 矢量图标母版与 ICO/PNG 生成脚本 |
+| `assets/` | 仓库展示用 PNG；运行期只嵌入 `icon.ico` |
 | `MTH.ini.example` | 设置文件模板；复制为 `MTH.ini` 后使用 |
 | `build.ps1` | 重新生成 Windows 资源并构建 `MTH.exe` |
 
