@@ -220,10 +220,6 @@ func (u *mainUI) handleMessage(hwnd, msg, wparam, lparam uintptr) uintptr {
 		u.handleTray(wparam, lparam)
 		return 0
 
-	case wmCommand:
-		u.handleCommand(loword(wparam), hiword(wparam))
-		return 0
-
 	case wmDroverCanClose:
 		if u.closePending {
 			pEndMenu.Call()
@@ -592,37 +588,6 @@ func (u *mainUI) appendNodeMenu(menu uintptr) {
 	}
 
 	appendSubMenu(menu, sub, "节点")
-}
-
-func (u *mainUI) handleCommand(id, notification uint32) {
-	switch id {
-	case idMenuRestart:
-		if notification == bnClicked {
-			u.restartApp()
-		}
-	case idMenuAutostart:
-		if notification == bnClicked {
-			u.toggleAutostart()
-		}
-	case idMenuHomepage:
-		shellOpen(homepageURL)
-	case idMenuDashboard:
-		if url := u.d.mihomoConfig.ClashAPI.DashboardURL(); url != "" {
-			shellOpen(url)
-		}
-	case idMenuQuit:
-		if notification == bnClicked {
-			u.requestClose()
-		}
-	case idMenuTun:
-		if notification == bnClicked {
-			u.toggleTun(!u.isTunActive)
-		}
-	case idMenuSystemProxy:
-		if notification == bnClicked {
-			u.toggleSystemProxy(!u.isSystemProxyActive, true, true)
-		}
-	}
 }
 
 func (u *mainUI) executeMenuCommand(cmd uint32) {
