@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -140,7 +141,7 @@ func newCoreSupervisor(exePath, homeDir, externalUI string, cfg clashAPIConfig, 
 		externalUI: externalUI,
 		logger:     l,
 		api:        newCoreAPIClient(cfg, l),
-		modes:      append([]string(nil), modes...),
+		modes:      slices.Clone(modes),
 		injectAPI:  injectAPI,
 		onEvent:    onEvent,
 		commands:   make(chan coreCommand, 100),
@@ -251,7 +252,7 @@ func (s *coreSupervisor) querySelectorSnapshot(names []string) selectorSnapshot 
 			continue
 		}
 		if len(proxy.All) > 0 {
-			snapshot.Members[name] = append([]string(nil), proxy.All...)
+			snapshot.Members[name] = slices.Clone(proxy.All)
 		}
 		if proxy.Now != "" {
 			snapshot.States[name] = proxy.Now
@@ -579,7 +580,7 @@ func (s *coreSupervisor) doQueryConfig() {
 		return
 	}
 
-	event := coreEvent{Kind: cekConfigModes, Modes: append([]string(nil), s.modes...)}
+	event := coreEvent{Kind: cekConfigModes, Modes: slices.Clone(s.modes)}
 	if mode, ok := obj["mode"].(string); ok {
 		event.Mode = mode
 	}
@@ -703,7 +704,7 @@ func (b *captureBuffer) Write(p []byte) (int, error) {
 
 func (b *captureBuffer) text() string {
 	b.mu.Lock()
-	snapshot := append([]byte(nil), b.data...)
+	snapshot := slices.Clone(b.data)
 	wrapped := b.wrapped
 	b.mu.Unlock()
 

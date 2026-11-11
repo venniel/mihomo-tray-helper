@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -84,15 +83,8 @@ func ensureSettingsClass() error {
 			LpszClassName: utf16Ptr(settingsWindowClass),
 			HIconSm:       icon,
 		}
-		wc.CbSize = uint32(unsafe.Sizeof(wc))
 
-		atom, _, _ := pRegisterClassExW.Call(uintptr(unsafe.Pointer(&wc)))
-		runtime.KeepAlive(&wc)
-		if atom == 0 {
-			if err := windows.GetLastError(); err != windows.ERROR_CLASS_ALREADY_EXISTS {
-				settingsClassErr = fmt.Errorf("Failed to register settings window class: %s", err.Error())
-			}
-		}
+		settingsClassErr = registerWindowClass(&wc, "settings")
 	})
 	return settingsClassErr
 }

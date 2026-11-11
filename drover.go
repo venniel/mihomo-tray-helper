@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -81,8 +82,8 @@ func newDrover(flags appFlags) (*drover, error) {
 	}
 	d.configPath = configPath
 	d.mihomoConfig = cfg
-	d.selectors = append([]configSelector(nil), cfg.Selectors...)
-	d.clashModes = append([]string(nil), cfg.Modes...)
+	d.selectors = slices.Clone(cfg.Selectors)
+	d.clashModes = slices.Clone(cfg.Modes)
 
 	d.wantsTun = cfg.HasTun && d.options.TunStartMode == tsmOn
 	if flags.has(afTun) {

@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -117,14 +117,9 @@ func newMainUI(d *drover, flags appFlags) (*mainUI, error) {
 		LpszClassName: utf16Ptr(mainWindowClass),
 		HIconSm:       u.hTrayIcon,
 	}
-	wc.CbSize = uint32(unsafe.Sizeof(wc))
 
-	atom, _, _ := pRegisterClassExW.Call(uintptr(unsafe.Pointer(&wc)))
-	runtime.KeepAlive(&wc)
-	if atom == 0 {
-		if err := windows.GetLastError(); err != windows.ERROR_CLASS_ALREADY_EXISTS {
-			return nil, fmt.Errorf("Failed to register main window class: %s", err.Error())
-		}
+	if err := registerWindowClass(&wc, "main"); err != nil {
+		return nil, err
 	}
 
 	// The message-only window is never shown, but screen readers still list it.
@@ -478,7 +473,7 @@ func (u *mainUI) appendModeMenu(menu uintptr) {
 	if len(modes) >= idMenuSelectorBase-idMenuModeBase {
 		modes = modes[:idMenuSelectorBase-idMenuModeBase]
 	}
-	u.menuModes = append([]string(nil), modes...)
+	u.menuModes = slices.Clone(modes)
 
 	sub, _, _ := pCreatePopupMenu.Call()
 	if sub == 0 {

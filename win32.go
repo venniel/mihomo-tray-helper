@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -474,10 +476,22 @@ var (
 	pOleInitialize    = ole32.NewProc("OleInitialize")
 	pOleUninitialize  = ole32.NewProc("OleUninitialize")
 	pCoCreateInstance = ole32.NewProc("CoCreateInstance")
-	pCoTaskMemFree    = ole32.NewProc("CoTaskMemFree")
 	pSetBkMode        = gdi32.NewProc("SetBkMode")
 	pSetTextColor     = gdi32.NewProc("SetTextColor")
 )
+
+func registerWindowClass(wc *wndClassEx, kind string) error {
+	wc.CbSize = uint32(unsafe.Sizeof(*wc))
+	atom, _, _ := pRegisterClassExW.Call(uintptr(unsafe.Pointer(wc)))
+	runtime.KeepAlive(wc)
+	if atom != 0 {
+		return nil
+	}
+	if err := windows.GetLastError(); err != windows.ERROR_CLASS_ALREADY_EXISTS {
+		return fmt.Errorf("Failed to register %s window class: %s", kind, err.Error())
+	}
+	return nil
+}
 
 func createWindowEx(exStyle uintptr, className, title string, style uintptr,
 	x, y, w, h int32, parent, menu, instance, param uintptr) uintptr {

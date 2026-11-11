@@ -67,7 +67,7 @@ type droverOptions struct {
 }
 
 func loadOptions(filename string) droverOptions {
-	currentDir := filepath.Dir(filename) + string(os.PathSeparator)
+	currentDir := includeTrailingPathDelimiter(filepath.Dir(filename))
 	opts := droverOptions{
 		CoreFile:           filepath.Join(currentDir, "mihomo.exe"),
 		ConfigFile:         filepath.Join(currentDir, "config.yaml"),
