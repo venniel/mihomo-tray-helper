@@ -6,6 +6,7 @@
 /config.yaml
 
 # Runtime artifacts
+/MTH.ini
 /cache.db
 /config/
 /geoip.metadb

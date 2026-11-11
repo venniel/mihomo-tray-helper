@@ -46,7 +46,7 @@ mihomo tray helper（MTH）是 Windows 上的轻量托盘控制器：后台运�
    安装了 `goversioninfo` 时，`build.ps1` 还会重新生成 Windows 版本资源。
 
 2. 将 `MTH.exe` 放到任意目录。
-3. 运行 `MTH.exe`。随附的 `MTH.ini` 指向程序目录下的 `mihomo.exe` 和 `config.yaml`，托盘图标即时出现、核心立即启动。左键单击托盘图标打开设置对话框，核心可执行文件和配置文件分别按文件选择。若希望首次启动就显示对话框，删除 `MTH.ini`（以及存在的旧文件 `mihomo-go.ini`）即可。
+3. 运行 `MTH.exe`。首次启动（程序目录没有 `MTH.ini`）会弹出设置对话框，选择核心可执行文件和配置文件后即可使用。若希望跳过首次设置，可将仓库中的 `MTH.ini.example` 复制为程序目录下的 `MTH.ini`，它默认指向同目录的 `mihomo.exe` 和 `config.yaml`。左键单击托盘图标可随时打开设置对话框；删除 `MTH.ini`（以及存在的旧文件 `mihomo-go.ini`）可再次进入首次设置。
 
 托盘菜单和设置对话框为中文。
 
@@ -112,7 +112,7 @@ proxy-groups:
 
 ## 程序配置
 
-设置保存在可执行文件旁的 `MTH.ini`。首次启动时若存在 `mihomo-go.ini`，会复制为 `MTH.ini`（旧文件保留），旧设置继续生效：
+设置保存在可执行文件旁的 `MTH.ini`。仓库只提供模板 `MTH.ini.example`，实际使用的 `MTH.ini` 是运行期文件，已被 `.gitignore` 忽略。首次启动时若存在 `mihomo-go.ini`，会复制为 `MTH.ini`（旧文件保留），旧设置继续生效：
 
 ```ini
 [MTH]
@@ -207,6 +207,7 @@ go test .
 | `systemproxy.go`、`tuncleanup.go`、`logger.go` | 系统代理、Wintun 清理、日志 |
 | `versioninfo.json`、`mth.manifest`、`resource_windows_amd64.syso` | Windows 版本信息、清单和图标资源 |
 | `icon.svg`、`make-icons.ps1` | 矢量图标母版与 ICO/PNG 生成脚本 |
+| `MTH.ini.example` | 设置文件模板；复制为 `MTH.ini` 后使用 |
 | `build.ps1` | 重新生成 Windows 资源并构建 `MTH.exe` |
 
 ## 限制
