@@ -201,6 +201,7 @@ go test .
 | `supervisor.go` | 核心进程管理（Job 对象、临时配置、Clash API 检查） |
 | `apiclient.go` | 精简的 Clash API 客户端 |
 | `config.go` | YAML 解析、要求检查、TUN 改写、Clash API 探测 |
+| `text.go` | 文本编码探测（UTF-8、UTF-16、ANSI） |
 | `options.go` | INI 选项和运行时状态 |
 | `autostart.go`、`elevation.go`、`singleinstance.go` | Windows 集成辅助 |
 | `systemproxy.go`、`tuncleanup.go`、`logger.go` | 系统代理、Wintun 清理、日志 |

@@ -117,14 +117,8 @@ func readConfigText(path string) (string, error) {
 		}
 		return "", fmt.Errorf("Failed to read configuration file.")
 	}
-	return utf8TextFromBytes(data), nil
-}
-
-func utf8TextFromBytes(data []byte) string {
-	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
-		return string(data[3:])
-	}
-	return string(data)
+	text, _ := decodeTextBytes(data)
+	return text, nil
 }
 
 func readMihomoConfig(text string) (mihomoConfig, error) {

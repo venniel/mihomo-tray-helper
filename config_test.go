@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -55,6 +57,23 @@ func tunEnabled(t *testing.T, text string) bool {
 		t.Fatal("rendered config has no tun.enable")
 	}
 	return enable.Value == "true"
+}
+
+func TestReadConfigTextUTF16(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	text := "mixed-port: 7890\n"
+	data := append([]byte{0xFF, 0xFE}, encodeUTF16LE(text)...)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := readConfigText(path)
+	if err != nil {
+		t.Fatalf("readConfigText: %v", err)
+	}
+	if got != text {
+		t.Errorf("text = %q, want %q", got, text)
+	}
 }
 
 func TestReadMihomoConfig(t *testing.T) {

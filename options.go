@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
-	"unsafe"
 )
 
 const (
@@ -238,21 +236,7 @@ func readTextLines(filename string) ([]string, bool, bool) {
 	if err != nil {
 		return nil, false, false
 	}
-	hadBOM := false
-	text := ""
-	switch {
-	case len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF:
-		hadBOM = true
-		text = string(data[3:])
-	case len(data) >= 2 && data[0] == 0xFF && data[1] == 0xFE:
-		text = utf16BytesToString(data[2:], false)
-	case len(data) >= 2 && data[0] == 0xFE && data[1] == 0xFF:
-		text = utf16BytesToString(data[2:], true)
-	case !utf8Valid(data):
-		text = ansiToUTF8(data)
-	default:
-		text = string(data)
-	}
+	text, hadBOM := decodeTextBytes(data)
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	text = strings.ReplaceAll(text, "\r", "\n")
 	text = strings.TrimSuffix(text, "\n")
@@ -260,69 +244,6 @@ func readTextLines(filename string) ([]string, bool, bool) {
 		return []string{}, hadBOM, true
 	}
 	return strings.Split(text, "\n"), hadBOM, true
-}
-
-func utf8Valid(data []byte) bool {
-	for len(data) > 0 {
-		if data[0] < 0x80 {
-			data = data[1:]
-			continue
-		}
-		var need int
-		switch {
-		case data[0]&0xE0 == 0xC0:
-			need = 1
-			if data[0] < 0xC2 {
-				return false
-			}
-		case data[0]&0xF0 == 0xE0:
-			need = 2
-		case data[0]&0xF8 == 0xF0:
-			need = 3
-			if data[0] > 0xF4 {
-				return false
-			}
-		default:
-			return false
-		}
-		if len(data) < need+1 {
-			return false
-		}
-		for i := 1; i <= need; i++ {
-			if data[i]&0xC0 != 0x80 {
-				return false
-			}
-		}
-		data = data[need+1:]
-	}
-	return true
-}
-
-func utf16BytesToString(data []byte, bigEndian bool) string {
-	u := make([]uint16, 0, len(data)/2)
-	for i := 0; i+1 < len(data); i += 2 {
-		if bigEndian {
-			u = append(u, uint16(data[i])<<8|uint16(data[i+1]))
-		} else {
-			u = append(u, uint16(data[i+1])<<8|uint16(data[i]))
-		}
-	}
-	return syscall.UTF16ToString(u)
-}
-
-var pMultiByteToWideChar = kernel32.NewProc("MultiByteToWideChar")
-
-func ansiToUTF8(data []byte) string {
-	if len(data) == 0 {
-		return ""
-	}
-	need, _, _ := pMultiByteToWideChar.Call(0, 0, uintptr(unsafe.Pointer(&data[0])), uintptr(len(data)), 0, 0) // CP_ACP
-	if need == 0 {
-		return string(data)
-	}
-	buf := make([]uint16, int(need))
-	pMultiByteToWideChar.Call(0, 0, uintptr(unsafe.Pointer(&data[0])), uintptr(len(data)), uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
-	return syscall.UTF16ToString(buf)
 }
 
 func iniGet(lines []string, section, key string) (string, bool) {

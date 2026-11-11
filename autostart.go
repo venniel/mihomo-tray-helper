@@ -171,7 +171,7 @@ func probeAutostartState() (autostartState, error) {
 		return asDisabled, nil
 	}
 
-	text := decodeSchTasksOutput(output)
+	text, _ := decodeTextBytes(output)
 	var task taskXML
 	decoder := xml.NewDecoder(strings.NewReader(text))
 	decoder.CharsetReader = func(charset string, input io.Reader) (io.Reader, error) {
@@ -213,19 +213,6 @@ func currentUserSAM() (string, error) {
 		return "", err
 	}
 	return windows.UTF16ToString(buffer), nil
-}
-
-func decodeSchTasksOutput(data []byte) string {
-	switch {
-	case len(data) >= 2 && data[0] == 0xFF && data[1] == 0xFE:
-		return utf16BytesToString(data[2:], false)
-	case len(data) >= 2 && data[0] == 0xFE && data[1] == 0xFF:
-		return utf16BytesToString(data[2:], true)
-	case utf8Valid(data):
-		return string(data)
-	default:
-		return ansiToUTF8(data)
-	}
 }
 
 func encodeUTF16LE(text string) []byte {
