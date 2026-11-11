@@ -404,55 +404,32 @@ func (s *settingsDialog) showError(message string) {
 }
 
 func (s *settingsDialog) browseCore() {
-	current := cleanPath(getWindowText(s.hCoreEdit))
-	initial := ""
-	var initialDir *uint16
-	if fileExists(current) {
-		initial = current
-		initialDir = utf16Ptr(filepath.Dir(current))
-	}
-
-	buffer := make([]uint16, 32768)
-	copyToUTF16Array(buffer, initial)
-
-	filter := utf16FilterString("核心程序 (*.exe)\x00*.exe\x00所有文件 (*.*)\x00*.*\x00")
-
-	ofn := openFileName{
-		LStructSize:     uint32(unsafe.Sizeof(openFileName{})),
-		HwndOwner:       s.hwnd,
-		LpstrFilter:     &filter[0],
-		LpstrFile:       &buffer[0],
-		NMaxFile:        uint32(len(buffer)),
-		LpstrInitialDir: initialDir,
-		LpstrTitle:      utf16Ptr("选择代理核心文件"),
-		NFilterIndex:    1,
-		Flags:           ofnFileMustExist | ofnPathMustExist | ofnExplorer | ofnNoChangeDir,
-	}
-
-	r, _, _ := pGetOpenFileNameW.Call(uintptr(unsafe.Pointer(&ofn)))
-	if r != 0 {
-		setWindowText(s.hCoreEdit, windows.UTF16ToString(buffer))
-	}
-	runtime.KeepAlive(&ofn)
-	runtime.KeepAlive(buffer)
-	runtime.KeepAlive(filter)
+	s.browseFile(s.hCoreEdit, "选择代理核心文件",
+		"核心程序 (*.exe)\x00*.exe\x00所有文件 (*.*)\x00*.*\x00", 0)
 }
 
 func (s *settingsDialog) browseConfig() {
-	current := cleanPath(getWindowText(s.hConfigEdit))
+	s.browseFile(s.hConfigEdit, "选择配置文件",
+		"配置文件 (*.yaml;*.yml)\x00*.yaml;*.yml\x00所有文件 (*.*)\x00*.*\x00", s.hCoreEdit)
+}
+
+func (s *settingsDialog) browseFile(edit uintptr, title, filterText string, fallbackEdit uintptr) {
+	current := cleanPath(getWindowText(edit))
 	initial := ""
 	var initialDir *uint16
 	if fileExists(current) {
 		initial = current
 		initialDir = utf16Ptr(filepath.Dir(current))
-	} else if coreFile := cleanPath(getWindowText(s.hCoreEdit)); fileExists(coreFile) {
-		initialDir = utf16Ptr(filepath.Dir(coreFile))
+	} else if fallbackEdit != 0 {
+		if fallback := cleanPath(getWindowText(fallbackEdit)); fileExists(fallback) {
+			initialDir = utf16Ptr(filepath.Dir(fallback))
+		}
 	}
 
 	buffer := make([]uint16, 32768)
 	copyToUTF16Array(buffer, initial)
 
-	filter := utf16FilterString("配置文件 (*.yaml;*.yml)\x00*.yaml;*.yml\x00所有文件 (*.*)\x00*.*\x00")
+	filter := utf16FilterString(filterText)
 
 	ofn := openFileName{
 		LStructSize:     uint32(unsafe.Sizeof(openFileName{})),
@@ -461,14 +438,14 @@ func (s *settingsDialog) browseConfig() {
 		LpstrFile:       &buffer[0],
 		NMaxFile:        uint32(len(buffer)),
 		LpstrInitialDir: initialDir,
-		LpstrTitle:      utf16Ptr("选择配置文件"),
+		LpstrTitle:      utf16Ptr(title),
 		NFilterIndex:    1,
 		Flags:           ofnFileMustExist | ofnPathMustExist | ofnExplorer | ofnNoChangeDir,
 	}
 
 	r, _, _ := pGetOpenFileNameW.Call(uintptr(unsafe.Pointer(&ofn)))
 	if r != 0 {
-		setWindowText(s.hConfigEdit, windows.UTF16ToString(buffer))
+		setWindowText(edit, windows.UTF16ToString(buffer))
 	}
 	runtime.KeepAlive(&ofn)
 	runtime.KeepAlive(buffer)
