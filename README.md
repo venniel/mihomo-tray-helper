@@ -194,11 +194,17 @@ go test .
 | 文件 | 用途 |
 | --- | --- |
 | `main.go` | 启动、单实例、DPI/COM 初始化、首次运行设置、提权 |
-| `ui.go` | 托盘图标、右键菜单、系统代理与 TUN 操作、自启、退出 |
+| `ui.go` | 主窗口、消息循环、系统代理与 TUN 操作、自启、设置入口 |
+| `tray.go` | 托盘图标、状态提示与气泡通知 |
+| `menu.go` | 右键菜单构建与命令分发 |
+| `shutdown.go` | 关闭窗口、会话结束与退出看门狗 |
 | `settings.go` | Win32 设置对话框和文件选择器 |
 | `win32.go` | Win32 绑定、结构体、无障碍名称、辅助函数 |
 | `drover.go` | 应用状态、节点/模式状态、运行时持久化、退出 |
-| `supervisor.go` | 核心进程管理（Job 对象、临时配置、Clash API 检查） |
+| `supervisor.go` | 核心监督循环、状态与命令分发 |
+| `coreprocess.go` | 核心进程启动、停止与临时配置 |
+| `coreapi.go` | Clash API 查询与切换操作 |
+| `coreoutput.go` | 核心输出捕获与关键错误提取 |
 | `apiclient.go` | 精简的 Clash API 客户端 |
 | `config.go` | YAML 解析、要求检查、TUN 改写、Clash API 探测 |
 | `text.go` | 文本编码探测（UTF-8、UTF-16、ANSI） |
