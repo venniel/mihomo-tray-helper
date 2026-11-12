@@ -43,7 +43,7 @@ mihomo tray helper（MTH）是 Windows 上的轻量托盘控制器：后台运�
    go build -ldflags "-H=windowsgui -s -w" -trimpath -o MTH.exe .
    ```
 
-   安装了 `goversioninfo` 时，`build.ps1` 还会重新生成 Windows 版本资源。
+   安装了 `rsrc` 时，`build.ps1` 会重新生成仅包含图标的 Windows 资源。
 
 2. 将 `MTH.exe` 放到任意目录。
 3. 运行 `MTH.exe`。首次启动（程序目录没有 `MTH.ini`）会弹出设置对话框，选择核心可执行文件和配置文件后即可使用。若希望跳过首次设置，可将仓库中的 `MTH.ini.example` 复制为程序目录下的 `MTH.ini`，它默认指向同目录的 `mihomo.exe` 和 `config.yaml`。左键单击托盘图标可随时打开设置对话框；删除 `MTH.ini`（以及存在的旧文件 `mihomo-go.ini`）可再次进入首次设置。
@@ -166,7 +166,7 @@ TUN 和系统代理的选择变化会即时写回 `MTH.ini`，不使用独立状
 
 - Go 1.27 或更高版本
 - `golang.org/x/sys` 和 `gopkg.in/yaml.v3`（由 `go mod download` 获取）
-- 可选：`goversioninfo`，仅用于重新生成 Windows 资源
+- 可选：`rsrc`，仅用于重新生成图标资源
 
 ```powershell
 .\build.ps1
@@ -181,13 +181,19 @@ go test .
 
 `-H=windowsgui` 会隐藏控制台窗口。UI 直接基于 Win32（GDI/user32/shell32）编写，除 Windows 系统库外没有运行时依赖。
 
-### Windows 元数据
+### Windows 资源
 
-`versioninfo.json` 定义产品名称、描述、版本和版权；`mth.manifest` 提供应用清单（asInvoker，Windows 10/11）。二者与图标一起由 [goversioninfo](https://github.com/josephspurrier/goversioninfo) 编译进 `resource_windows_amd64.syso`。该 .syso 已提交，直接 `go build` 也能得到带完整信息的 `MTH.exe`；修改元数据后运行 `build.ps1` 重新生成。
+`resource_windows_amd64.syso` 只包含可执行文件图标，由 [rsrc](https://github.com/akavel/rsrc) 从 `icon.ico` 生成：
+
+```sh
+rsrc -arch amd64 -ico icon.ico -o resource_windows_amd64.syso
+```
+
+该 .syso 已提交，直接 `go build` 即可得到带图标的 `MTH.exe`。程序不再嵌入版本号、公司、描述或应用清单，因此资源管理器中不会显示这些信息；启动权限仍由系统默认的 asInvoker 决定，TUN 仍通过 UAC 显式提权。
 
 ### 图标资源
 
-`icon.svg` 是托盘、窗口和可执行文件图标的矢量母版。`make-icons.ps1` 使用 [resvg-cli](https://github.com/Zhengqbbb/resvg-cli)（`npm install -g resvg-cli`）渲染它，并重新生成根目录的 `icon.ico`（16/20/24/32/48/64/128/256 px 帧）以及 `assets/` 下的 `icon.png`、`icon_512.png`。
+`icon.svg` 是托盘、窗口和可执行文件图标的矢量母版。`make-icons.ps1` 使用 [resvg-cli](https://github.com/Zhengqbbb/resvg-cli)（`npm install -g resvg-cli`）渲染它，并重新生成根目录的 `icon.ico`（16/20/24/32/48/64/128/256 px 帧）以及 `assets/` 下的 `icon.png`、`icon_512.png`。更新 `icon.ico` 后运行 `build.ps1`（或手动执行上面的 `rsrc` 命令）可同步更新可执行文件图标。
 
 ### 源码结构
 
@@ -211,7 +217,7 @@ go test .
 | `options.go` | INI 选项和运行时状态 |
 | `autostart.go`、`elevation.go`、`singleinstance.go` | Windows 集成辅助 |
 | `systemproxy.go`、`tuncleanup.go`、`logger.go` | 系统代理、Wintun 清理、日志 |
-| `versioninfo.json`、`mth.manifest`、`resource_windows_amd64.syso` | Windows 版本信息、清单和图标资源 |
+| `resource_windows_amd64.syso` | 仅图标资源（由 rsrc 生成） |
 | `icon.svg`、`make-icons.ps1` | 矢量图标母版与 ICO/PNG 生成脚本 |
 | `assets/` | 仓库展示用 PNG；运行期只嵌入 `icon.ico` |
 | `MTH.ini.example` | 设置文件模板；复制为 `MTH.ini` 后使用 |
