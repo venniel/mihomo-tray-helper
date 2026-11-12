@@ -63,6 +63,14 @@ jobs:
           git tag -f "$TAG" "$GITHUB_SHA"
           git push -f origin "refs/tags/$TAG"
 
+          # The push can reach git before the REST API; wait for the tag to be visible.
+          for _ in {1..10}; do
+            if gh api "repos/$GH_REPO/git/ref/tags/$TAG" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+
           gh release create "$TAG" --title 'Latest build' --notes "$notes" --latest --verify-tag
 
           gh release upload "$TAG" "$ARTIFACT"
