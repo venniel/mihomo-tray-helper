@@ -266,7 +266,7 @@ func (u *mainUI) cleanup() {
 // only counts while the core runs the TUN config, so a failed or pending start
 // never leaves a stale mode on display.
 func (u *mainUI) trayTip() string {
-	tun := u.isTunActive && u.d != nil && u.d.supervisor.currentState() == csRunning
+	tun := u.tunActive()
 
 	status := ""
 	switch {
@@ -442,7 +442,7 @@ func (u *mainUI) buildMenu() (uintptr, bool) {
 
 	if d.mihomoConfig.HasTun {
 		flags := uintptr(mfString)
-		if u.isTunActive {
+		if u.tunActive() {
 			flags |= mfChecked
 		}
 		if u.tunBusy {
@@ -606,7 +606,7 @@ func (u *mainUI) executeMenuCommand(cmd uint32) {
 		u.requestClose()
 		return
 	case idMenuTun:
-		u.toggleTun(!u.isTunActive)
+		u.toggleTun(!u.tunActive())
 		return
 	case idMenuSystemProxy:
 		u.toggleSystemProxy(!u.isSystemProxyActive, true, true)
@@ -661,6 +661,10 @@ func (u *mainUI) toggleSystemProxy(enable, updateIcon, persist bool) {
 	if updateIcon {
 		u.updateTrayIcon()
 	}
+}
+
+func (u *mainUI) tunActive() bool {
+	return u.isTunActive && u.d != nil && u.d.supervisor != nil && u.d.supervisor.currentState() == csRunning
 }
 
 func (u *mainUI) toggleTunDisplay(active, updateIcon bool) {

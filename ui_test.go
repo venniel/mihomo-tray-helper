@@ -5,6 +5,30 @@ import (
 	"testing"
 )
 
+func TestTunActive(t *testing.T) {
+	d := &drover{supervisor: &coreSupervisor{}}
+	u := &mainUI{d: d}
+
+	if u.tunActive() {
+		t.Error("TUN should be inactive before it is selected")
+	}
+
+	u.isTunActive = true
+	if u.tunActive() {
+		t.Error("TUN should be inactive while the core is stopped")
+	}
+
+	atomic.StoreInt32(&d.supervisor.state, int32(csRunning))
+	if !u.tunActive() {
+		t.Error("TUN should be active with a running core")
+	}
+
+	u.d = nil
+	if u.tunActive() {
+		t.Error("TUN should be inactive without a drover")
+	}
+}
+
 func TestTrayTip(t *testing.T) {
 	d := &drover{supervisor: &coreSupervisor{}}
 	u := &mainUI{d: d}
