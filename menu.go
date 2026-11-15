@@ -47,6 +47,7 @@ func (u *mainUI) buildMenu() (uintptr, bool) {
 
 	extras, _, _ := pCreatePopupMenu.Call()
 	appendMenu(extras, mfString, idMenuRestart, "重启")
+	appendMenu(extras, mfString, idMenuSettings, "设置")
 
 	autostartFlags := uintptr(mfString)
 	if u.autostartBusy || u.autostartState == asUnknown {
@@ -70,7 +71,7 @@ func (u *mainUI) buildMenu() (uintptr, bool) {
 		if u.tunBusy {
 			flags |= mfGrayed
 		}
-		appendMenu(menu, flags, idMenuTun, "TUN 模式")
+		appendMenu(menu, flags, idMenuTun, "虚拟网卡")
 	}
 
 	proxyFlags := uintptr(mfString)
@@ -212,6 +213,9 @@ func (u *mainUI) executeMenuCommand(cmd uint32) {
 	switch cmd {
 	case idMenuRestart:
 		u.restartApp()
+		return
+	case idMenuSettings:
+		u.showSettings()
 		return
 	case idMenuAutostart:
 		u.toggleAutostart()

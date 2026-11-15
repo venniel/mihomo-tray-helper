@@ -9,25 +9,25 @@ import (
 // --- Tray icon -----------------------------------------------------------
 
 // trayTip reports the proxying that is actually in effect. The idle state shows
-// the application name, while an active mode is prefixed with the core name. TUN
-// only counts while the core runs the TUN config, so a failed or pending start
-// never leaves a stale mode on display.
+// the application name, while an active mode is prefixed with the short name.
+// TUN only counts while the core runs the TUN config, so a failed or pending
+// start never leaves a stale mode on display.
 func (u *mainUI) trayTip() string {
 	tun := u.tunActive()
 
 	status := ""
 	switch {
 	case tun && u.isSystemProxyActive:
-		status = "TUN 模式 + 系统代理"
+		status = "虚拟网卡和系统代理"
 	case tun:
-		status = "TUN 模式"
+		status = "虚拟网卡"
 	case u.isSystemProxyActive:
 		status = "系统代理"
 	}
 	if status == "" {
 		return appTitle
 	}
-	return "mihomo:" + status
+	return appShortName + ":" + status
 }
 
 func (u *mainUI) addTrayIcon() {
@@ -122,10 +122,14 @@ func (u *mainUI) showBalloon(text, title string, flags uint32, timeout int) {
 
 func (u *mainUI) handleTray(wparam, lparam uintptr) {
 	event := loword(lparam)
+	// NOTIFYICON_VERSION_4 delivers the legacy mouse messages alongside the
+	// semantic notifications; handling both would run every action twice.
 	switch event {
-	case wmContextMenu, wmRightButtonUp:
+	case wmContextMenu:
 		u.showTrayMenu()
-	case ninSelect, ninKeySelect, wmLeftButtonUp, ninBalloonUserClick:
+	case ninSelect, ninKeySelect:
+		u.toggleProxyMode()
+	case ninBalloonUserClick:
 		u.showSettings()
 	}
 }

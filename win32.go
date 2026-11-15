@@ -20,8 +20,6 @@ const (
 	wmCommand          = 0x0111
 	wmContextMenu      = 0x007B
 	wmNcDestroy        = 0x0082
-	wmLeftButtonUp     = 0x0202
-	wmRightButtonUp    = 0x0205
 	wmApp              = 0x8000
 	wmNull             = 0x0000
 	wmDpiChanged       = 0x02E0

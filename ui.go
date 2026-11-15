@@ -29,6 +29,7 @@ const (
 	idMenuQuit         = 5
 	idMenuTun          = 6
 	idMenuSystemProxy  = 7
+	idMenuSettings     = 8
 	idMenuModeBase     = 100
 	idMenuSelectorBase = 10000
 )
@@ -52,6 +53,7 @@ type mainUI struct {
 	isSystemProxyActive bool
 	closePending        bool
 	tunBusy             bool
+	lastToggleTick      uint32
 
 	autostartState autostartState
 	autostartBusy  bool
@@ -330,6 +332,33 @@ func (u *mainUI) toggleTun(enable bool) {
 	u.tunBusy = true
 	u.d.storeTun(enable)
 	u.d.startCore(enable)
+}
+
+// toggleProxyMode swaps the active mode on a tray click: TUN gives way to
+// the system proxy and vice versa. From idle the system proxy is enabled.
+func (u *mainUI) toggleProxyMode() {
+	if u.closePending || u.tunBusy {
+		return
+	}
+	// Screen readers can deliver one Enter as two identical NIN_KEYSELECT
+	// notifications ~16ms apart; coalesce activations in a burst.
+	now := getTickCount()
+	if now-u.lastToggleTick < 300 {
+		return
+	}
+	u.lastToggleTick = now
+	switch {
+	case u.tunActive():
+		u.toggleTun(false)
+		u.toggleSystemProxy(true, true, true)
+	case u.isSystemProxyActive && u.d.mihomoConfig.HasTun:
+		// Persist the proxy state before toggleTun: it may relaunch elevated
+		// and exit, and the new instance reads the stored options.
+		u.toggleSystemProxy(false, true, true)
+		u.toggleTun(true)
+	default:
+		u.toggleSystemProxy(!u.isSystemProxyActive, true, true)
+	}
 }
 
 func (u *mainUI) editSelector(action selectorAction) {
