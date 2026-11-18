@@ -61,6 +61,7 @@ type coreEvent struct {
 	RequestID      int
 	Mode           string
 	Modes          []string
+	Version        string
 	SelectorNow    map[string]string
 	SelectorSerial int
 }

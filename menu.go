@@ -81,7 +81,11 @@ func (u *mainUI) buildMenu() (uintptr, bool) {
 	appendMenu(menu, proxyFlags, idMenuSystemProxy, "系统代理")
 
 	if d.mihomoConfig.ClashAPI.DashboardURL() != "" {
-		appendMenu(menu, mfString, idMenuDashboard, "面板")
+		dashboardLabel := "版本未知"
+		if d.coreVersion != "" {
+			dashboardLabel = d.coreVersion
+		}
+		appendMenu(menu, mfString, idMenuDashboard, dashboardLabel)
 	}
 
 	appendMenu(menu, mfString, idMenuQuit, "退出")

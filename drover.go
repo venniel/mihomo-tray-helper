@@ -40,6 +40,7 @@ type drover struct {
 	wantsTun          bool
 	clashMode         string
 	clashModes        []string
+	coreVersion       string
 
 	selectorStates       map[string]string
 	selectorQueryPending bool
@@ -174,6 +175,7 @@ func (d *drover) handleCoreEvent(ev coreEvent) {
 		d.notifyEvent(droverEvent{Kind: dekError, Msg: ev.Msg})
 
 	case cekAPIReady:
+		d.coreVersion = ev.Version
 		d.refreshSelectorStates()
 
 	case cekConfigModes, cekModeDone:

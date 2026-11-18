@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -28,18 +29,24 @@ func (c *coreAPIClient) isConfigured() bool {
 	return c.cfg.IsConfigured()
 }
 
-func (c *coreAPIClient) checkReady() bool {
+func (c *coreAPIClient) checkReady() (string, bool) {
 	if !c.isConfigured() {
-		return false
+		return "", false
 	}
 
 	c.log("API check...")
-	if _, err := c.request("GET", "/version", "", time.Second); err != nil {
+	payload, err := c.request("GET", "/version", "", time.Second)
+	if err != nil {
 		c.log(strings.TrimSpace("API check: failed. " + err.Error()))
-		return false
+		return "", false
 	}
 	c.log("API check: successful.")
-	return true
+
+	var info struct {
+		Version string `json:"version"`
+	}
+	_ = json.Unmarshal([]byte(payload), &info)
+	return strings.TrimSpace(info.Version), true
 }
 
 func (c *coreAPIClient) request(method, path, data string, timeout time.Duration) (string, error) {

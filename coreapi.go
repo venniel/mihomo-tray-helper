@@ -90,10 +90,10 @@ func (s *coreSupervisor) checkAPIStatus() {
 	}
 	s.apiNextCheck = now.Add(apiCheckInterval)
 
-	if s.api.checkReady() {
+	if version, ready := s.api.checkReady(); ready {
 		s.log("API ready.")
 		s.apiCheckActive = false
-		s.notifyEvent(coreEvent{Kind: cekAPIReady})
+		s.notifyEvent(coreEvent{Kind: cekAPIReady, Version: version})
 		s.doQueryConfig()
 	}
 }
