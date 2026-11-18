@@ -30,7 +30,7 @@ func TestTunActive(t *testing.T) {
 }
 
 func TestTrayTip(t *testing.T) {
-	d := &drover{supervisor: &coreSupervisor{}}
+	d := &drover{supervisor: &coreSupervisor{}, configName: "test"}
 	u := &mainUI{d: d}
 
 	if got := u.trayTip(); got != appTitle {
@@ -38,22 +38,22 @@ func TestTrayTip(t *testing.T) {
 	}
 
 	u.isSystemProxyActive = true
-	if got, want := u.trayTip(), "M:系统代理"; got != want {
+	if got, want := u.trayTip(), "test·系统代理"; got != want {
 		t.Errorf("system proxy tooltip = %q, want %q", got, want)
 	}
 
 	u.isTunActive = true
-	if got, want := u.trayTip(), "M:系统代理"; got != want {
+	if got, want := u.trayTip(), "test·系统代理"; got != want {
 		t.Errorf("tun while stopped = %q, want %q", got, want)
 	}
 
 	atomic.StoreInt32(&d.supervisor.state, int32(csRunning))
-	if got, want := u.trayTip(), "M:虚拟网卡和系统代理"; got != want {
+	if got, want := u.trayTip(), "test·虚拟网卡和系统代理"; got != want {
 		t.Errorf("tun and system proxy tooltip = %q, want %q", got, want)
 	}
 
 	u.isSystemProxyActive = false
-	if got, want := u.trayTip(), "M:虚拟网卡"; got != want {
+	if got, want := u.trayTip(), "test·虚拟网卡"; got != want {
 		t.Errorf("tun tooltip = %q, want %q", got, want)
 	}
 }

@@ -31,6 +31,7 @@ type drover struct {
 	options      droverOptions
 	optionsFile  string
 	configPath   string
+	configName   string
 	mihomoConfig mihomoConfig
 	selectors    []configSelector
 
@@ -57,11 +58,17 @@ type drover struct {
 	destroying        bool
 }
 
+func configFileStem(path string) string {
+	name := filepath.Base(path)
+	return strings.TrimSuffix(name, filepath.Ext(name))
+}
+
 func newDrover(flags appFlags) (*drover, error) {
 	d := &drover{}
 	d.currentProcessDir = includeTrailingPathDelimiter(filepath.Dir(currentExecutablePath()))
 	d.optionsFile = d.currentProcessDir + optionsFilename
 	d.options = loadOptions(d.optionsFile)
+	d.configName = configFileStem(d.options.ConfigFile)
 	d.logger = newLogger(d.options.LogFile)
 
 	fail := func(err error) (*drover, error) {

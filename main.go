@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	appTitle     = "mihomo tray helper"
-	appShortName = "M"
+	appTitle = "mihomo tray helper"
 
 	homepageURL = "https://github.com/MetaCubeX/mihomo"
 
